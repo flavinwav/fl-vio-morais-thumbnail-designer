@@ -1,26 +1,17 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-
-# Dependencies
 node_modules/
-
-# Build output
 dist/
-dist-ssr/
-
-# Vite / TypeScript cache
-.vite/
-*.tsbuildinfo
-
-# Next.js / vinext leftovers
+.DS_Store
+*.local
 .next/
 .vinext/
 .openai/
 .wrangler/
-next-env.d.ts
-
-# Misc
-.DS_Store
-*.local
+.vite/
+src/
+index.html
+package.json
+package-lock.json
+vite.config.ts
+tsconfig*.json
+eslint.config.mjs
+next.config.ts
