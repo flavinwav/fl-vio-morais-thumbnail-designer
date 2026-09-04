@@ -1,38 +1,26 @@
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/.vinext/
-/out/
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
+logs
+*.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
 
-# local environment
-.env*
+# Dependencies
+node_modules/
 
-# deployment and generated files
-.vercel
+# Build output
+dist/
+dist-ssr/
+
+# Vite / TypeScript cache
+.vite/
+*.tsbuildinfo
+
+# Next.js / vinext leftovers
+.next/
+.vinext/
+.openai/
+.wrangler/
 next-env.d.ts
-/dist/
-/.wrangler/
-/outputs/
-/work/
+
+# Misc
+.DS_Store
+*.local
