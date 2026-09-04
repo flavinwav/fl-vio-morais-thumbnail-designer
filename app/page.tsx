@@ -16,7 +16,7 @@ export default function Home() {
       <iframe
         ref={frameRef}
         className="mirror-frame"
-        src="/mirror/index.html"
+        src="/mirror/index.html?v=godray-full-3"
         title="Flávio Morais — Thumbnail and visual designer"
         onLoad={cleanMirrorChrome}
       />
