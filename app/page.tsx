@@ -105,11 +105,13 @@ function patchQuickChatCard(doc: Document) {
     );
     if (icon) {
       icon.setAttribute("viewBox", "0 0 24 24");
-      icon.setAttribute("fill", "currentColor");
       icon.setAttribute("data-framer-name", "WhatsApp Icon");
       const path = doc.createElementNS(SVG_NS, "path");
       path.setAttribute("d", WHATSAPP_PATH);
-      path.setAttribute("fill", "currentColor");
+      // The sibling Instagram glyph paints with this variable (#2063ab on the
+      // light-blue tile). currentColor here resolves to black, which is what
+      // made the WhatsApp mark look like a black stamp next to it.
+      path.setAttribute("fill", "var(--21h8s6, #2063ab)");
       icon.replaceChildren(path);
     }
 
@@ -226,53 +228,179 @@ function patchContactForm(doc: Document) {
 }
 
 /**
- * Native `scrollIntoView({ behavior: "smooth" })` is unreliable inside the
- * mirror — Framer's motion runtime cancels the browser's scroll animation, so
- * the call silently no-ops. Drive the scroll ourselves instead.
+ * Film grain.
+ *
+ * Generated from an SVG turbulence filter rather than shipped as a texture —
+ * no extra request, and it tiles at any viewport. One fixed layer above the
+ * content, below the site's custom cursor (z-index 9999999), and transparent
+ * to pointer events so nothing underneath stops responding.
  */
+const GRAIN_TILE = encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'>" +
+    "<filter id='g'>" +
+    "<feTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/>" +
+    "<feColorMatrix type='saturate' values='0'/>" +
+    "</filter>" +
+    "<rect width='100%' height='100%' filter='url(#g)'/>" +
+    "</svg>",
+);
+
+function installGrain(doc: Document) {
+  if (doc.getElementById("fm-grain") || !doc.body) return;
+  const layer = doc.createElement("div");
+  layer.id = "fm-grain";
+  layer.setAttribute("aria-hidden", "true");
+  layer.style.cssText = [
+    "position:fixed",
+    "inset:0",
+    "pointer-events:none",
+    "z-index:9999990",
+    `background-image:url("data:image/svg+xml,${GRAIN_TILE}")`,
+    "background-repeat:repeat",
+    "opacity:0.14",
+    "mix-blend-mode:overlay",
+  ].join(";");
+  doc.body.appendChild(layer);
+}
+
+/** How much of the remaining distance is covered each frame — lower glides longer. */
+const SCROLL_LERP = 0.08;
+const WHEEL_FACTOR = 0.85;
+
+type ScrollController = { scrollToY: (y: number) => void };
+const scrollControllers = new WeakMap<Document, ScrollController>();
+
+/**
+ * Smooth inertial scrolling.
+ *
+ * Replaces the export's own wheel handler (removed from the mirror) so that
+ * wheel input and in-page anchor jumps share one easing model instead of
+ * fighting each other.
+ */
+function installSmoothScroll(doc: Document): ScrollController | null {
+  const cached = scrollControllers.get(doc);
+  if (cached) return cached;
+
+  const win = doc.defaultView;
+  if (!win) return null;
+
+  const maxY = () =>
+    Math.max(0, doc.documentElement.scrollHeight - win.innerHeight);
+  const clamp = (y: number) => Math.max(0, Math.min(maxY(), y));
+
+  // Touch devices already scroll smoothly, and reduced-motion means don't.
+  let disabled =
+    win.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    win.matchMedia("(pointer: coarse)").matches;
+
+  let target = win.scrollY;
+  let frame = 0;
+  let running = false;
+  let framesSeen = 0;
+
+  const stop = () => {
+    if (frame) win.cancelAnimationFrame(frame);
+    frame = 0;
+    running = false;
+  };
+
+  const tick = () => {
+    framesSeen += 1;
+    const current = win.scrollY;
+    const delta = target - current;
+    if (Math.abs(delta) < 0.5) {
+      win.scrollTo(0, target);
+      stop();
+      return;
+    }
+    win.scrollTo(0, current + delta * SCROLL_LERP);
+    frame = win.requestAnimationFrame(tick);
+  };
+
+  const start = () => {
+    if (running || disabled) return;
+    running = true;
+    frame = win.requestAnimationFrame(tick);
+    // If frames never arrive (throttled renderer, hidden view), stop swallowing
+    // wheel events and hand scrolling back to the browser.
+    win.setTimeout(() => {
+      if (framesSeen === 0) {
+        disabled = true;
+        stop();
+      }
+    }, 400);
+  };
+
+  win.addEventListener(
+    "wheel",
+    (event: WheelEvent) => {
+      if (disabled || event.ctrlKey || event.metaKey || event.deltaY === 0) {
+        return;
+      }
+      const unit =
+        event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? win.innerHeight : 1;
+      target = clamp(target + event.deltaY * unit * WHEEL_FACTOR);
+      event.preventDefault();
+      start();
+    },
+    { passive: false },
+  );
+
+  // Keyboard, scrollbar drags and browser-driven scrolls move the page without
+  // us; adopt their position so the next wheel notch starts from the truth.
+  win.addEventListener(
+    "scroll",
+    () => {
+      if (!running) target = win.scrollY;
+    },
+    { passive: true },
+  );
+  win.addEventListener(
+    "resize",
+    () => {
+      target = clamp(target);
+    },
+    { passive: true },
+  );
+
+  const controller: ScrollController = {
+    scrollToY: (y: number) => {
+      const destination = clamp(y);
+      if (disabled) {
+        win.scrollTo(0, destination);
+        return;
+      }
+      target = destination;
+      start();
+      // Guarantee arrival even if the easing loop never runs.
+      win.setTimeout(() => {
+        if (Math.abs(win.scrollY - destination) > 4) {
+          win.scrollTo(0, destination);
+        }
+      }, 1200);
+    },
+  };
+
+  scrollControllers.set(doc, controller);
+  return controller;
+}
+
 function smoothScrollTo(doc: Document, section: Element) {
   const win = doc.defaultView;
   if (!win) return;
 
-  const start = win.scrollY;
+  const target = win.scrollY + section.getBoundingClientRect().top;
+  const controller = installSmoothScroll(doc);
+  if (controller) {
+    controller.scrollToY(target);
+    return;
+  }
+
   const maxScroll = Math.max(
     0,
     doc.documentElement.scrollHeight - win.innerHeight,
   );
-  const target = Math.max(
-    0,
-    Math.min(start + section.getBoundingClientRect().top, maxScroll),
-  );
-  const distance = target - start;
-  if (Math.abs(distance) < 2) return;
-
-  if (win.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    win.scrollTo(0, target);
-    return;
-  }
-
-  const duration = Math.min(900, Math.max(320, Math.abs(distance) * 0.45));
-  const startedAt = win.performance.now();
-  const ease = (t: number) =>
-    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-  let settled = false;
-  const step = (now: number) => {
-    if (settled) return;
-    const progress = Math.min(1, (now - startedAt) / duration);
-    win.scrollTo(0, start + distance * ease(progress));
-    if (progress < 1) win.requestAnimationFrame(step);
-    else settled = true;
-  };
-  win.requestAnimationFrame(step);
-
-  // Animation frames can be starved (backgrounded tab, throttled renderer), in
-  // which case the loop above never advances. Guarantee arrival regardless.
-  win.setTimeout(() => {
-    if (settled) return;
-    settled = true;
-    win.scrollTo(0, target);
-  }, duration + 120);
+  win.scrollTo(0, Math.max(0, Math.min(target, maxScroll)));
 }
 
 /**
@@ -403,6 +531,8 @@ function patchMirror(doc: Document) {
   patchSeeWorksLink(doc);
   patchAnchorScrolling(doc);
   patchFooterSocials(doc);
+  installGrain(doc);
+  installSmoothScroll(doc);
 }
 
 export default function Home() {
