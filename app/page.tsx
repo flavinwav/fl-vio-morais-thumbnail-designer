@@ -539,6 +539,94 @@ function patchNavLayering(doc: Document) {
 }
 
 /**
+ * 6b — the nav collapses on the way down and reopens on the way up.
+ *
+ * The links group shrinks away so the pill is left with just the brand and the
+ * CTA, then comes back the moment the reader scrolls up — and is always open at
+ * the top of the page. The wrapper is centred with translateX(-50%), so the
+ * pill stays centred by itself as its width changes; the negative margin is
+ * only there to absorb one of the flex gaps that would otherwise be left
+ * behind by a zero-width child.
+ */
+const NAV_COLLAPSE_AT = 80;
+const NAV_TOP_ZONE = 40;
+const NAV_JITTER = 4;
+
+function installNavCollapse(doc: Document) {
+  const win = doc.defaultView;
+  if (!win || doc.getElementById("fm-nav-collapse")) return;
+
+  const links = doc.querySelector<HTMLElement>(
+    '[data-framer-name="Navigation Links"]',
+  );
+  if (!links) return;
+
+  // Framer's animation runtime rewrites these nodes' inline style attributes,
+  // so inline changes are wiped within a frame. Drive it from a stylesheet
+  // instead — which also covers every responsive variant at once.
+  const ease = "cubic-bezier(0.22, 0.61, 0.36, 1)";
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-nav-collapse";
+  sheet.textContent = `
+[data-framer-name="Navigation Links"]{
+  overflow:hidden !important;
+  max-width:var(--fm-nav-links-w, 320px) !important;
+  transition:max-width 420ms ${ease}, margin-left 420ms ${ease}, opacity 220ms ease !important;
+}
+:root[data-fm-nav="collapsed"] [data-framer-name="Navigation Links"]{
+  max-width:0 !important;
+  opacity:0 !important;
+  margin-left:calc(-1 * var(--fm-nav-gap, 45px)) !important;
+  pointer-events:none !important;
+}`;
+  doc.head.appendChild(sheet);
+
+  const pill = links.parentElement;
+  const gap = pill
+    ? parseFloat(win.getComputedStyle(pill).columnGap || "0") || 0
+    : 0;
+  const root = doc.documentElement;
+  root.style.setProperty("--fm-nav-gap", `${gap}px`);
+
+  const measure = () => {
+    const wasCollapsed = root.getAttribute("data-fm-nav") === "collapsed";
+    if (wasCollapsed) return;
+    root.style.setProperty("--fm-nav-links-w", "none");
+    const width = links.getBoundingClientRect().width;
+    root.style.setProperty("--fm-nav-links-w", `${Math.ceil(width)}px`);
+  };
+  measure();
+
+  let collapsed = false;
+  const setCollapsed = (next: boolean) => {
+    if (next === collapsed) return;
+    collapsed = next;
+    if (next) root.setAttribute("data-fm-nav", "collapsed");
+    else root.removeAttribute("data-fm-nav");
+    links.setAttribute("aria-hidden", next ? "true" : "false");
+  };
+
+  let lastY = win.scrollY;
+  win.addEventListener(
+    "scroll",
+    () => {
+      const y = win.scrollY;
+      const delta = y - lastY;
+      if (Math.abs(delta) < NAV_JITTER) return;
+      lastY = y;
+
+      if (y <= NAV_TOP_ZONE) setCollapsed(false);
+      else if (delta > 0 && y > NAV_COLLAPSE_AT) setCollapsed(true);
+      else if (delta < 0) setCollapsed(false);
+    },
+    { passive: true },
+  );
+
+  // Breakpoint changes alter the links' natural width; re-measure while open.
+  win.addEventListener("resize", measure, { passive: true });
+}
+
+/**
  * 7 — testimonials read as a proper card grid.
  *
  * The section already lays out as `grid` with three 341px tracks and a 16px
@@ -630,6 +718,7 @@ function patchMirror(doc: Document) {
   patchAnchorScrolling(doc);
   patchFooterSocials(doc);
   patchNavLayering(doc);
+  installNavCollapse(doc);
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
   installGrain(doc);
