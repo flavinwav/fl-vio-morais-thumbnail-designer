@@ -316,6 +316,94 @@ function smoothScrollTo(doc: Document, section: Element) {
 }
 
 /**
+ * Light wheel smoothing.
+ *
+ * Each frame closes this fraction of the remaining distance. Lenis-style
+ * smoothing sits around 0.1; the first attempt here used 0.08 *and* scaled the
+ * wheel delta to 0.85, and the two compounded into something that read as slow
+ * motion. Full travel per notch with a quicker settle keeps the smoothing
+ * without the drag.
+ */
+const SCROLL_LERP = 0.14;
+const installedScrollSmoothing = new WeakSet<Document>();
+
+function installWheelSmoothing(doc: Document) {
+  const win = doc.defaultView;
+  if (!win || installedScrollSmoothing.has(doc)) return;
+  installedScrollSmoothing.add(doc);
+
+  // Touch already scrolls smoothly, and reduced-motion means don't.
+  let disabled =
+    win.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    win.matchMedia("(pointer: coarse)").matches;
+
+  const clamp = (y: number) =>
+    Math.max(
+      0,
+      Math.min(doc.documentElement.scrollHeight - win.innerHeight, y),
+    );
+
+  let target = win.scrollY;
+  let frame = 0;
+  let running = false;
+  let framesSeen = 0;
+
+  const stop = () => {
+    if (frame) win.cancelAnimationFrame(frame);
+    frame = 0;
+    running = false;
+  };
+
+  const tick = () => {
+    framesSeen += 1;
+    const current = win.scrollY;
+    const delta = target - current;
+    if (Math.abs(delta) < 0.5) {
+      win.scrollTo(0, target);
+      stop();
+      return;
+    }
+    win.scrollTo(0, current + delta * SCROLL_LERP);
+    frame = win.requestAnimationFrame(tick);
+  };
+
+  win.addEventListener(
+    "wheel",
+    (event: WheelEvent) => {
+      if (disabled || event.ctrlKey || event.metaKey || event.deltaY === 0) {
+        return;
+      }
+      const unit =
+        event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? win.innerHeight : 1;
+      target = clamp(target + event.deltaY * unit);
+      event.preventDefault();
+      if (running) return;
+      running = true;
+      frame = win.requestAnimationFrame(tick);
+      // If frames never arrive, stop swallowing wheel events and hand
+      // scrolling back to the browser.
+      win.setTimeout(() => {
+        if (framesSeen === 0) {
+          disabled = true;
+          stop();
+        }
+      }, 400);
+    },
+    { passive: false },
+  );
+
+  // Anything that moves the page without us — keyboard, scrollbar, anchor
+  // jumps — becomes the new starting point.
+  win.addEventListener(
+    "scroll",
+    () => {
+      if (!running) target = win.scrollY;
+    },
+    { passive: true },
+  );
+}
+
+/**
  * 4a — "See Works" points at the works section.
  *
  * The export ships href="./#work", but Framer's runtime overwrites it with its
@@ -500,6 +588,15 @@ function installNavCollapse(doc: Document) {
   pointer-events:none !important;
   /* Closing: fade out first, then take the width away. */
   transition:opacity 130ms ease, max-width 360ms ${ease} 90ms, margin-left 360ms ${ease} 90ms !important;
+}
+/* The active-section highlight is a sibling of the links, not a child, so
+   collapsing the track leaves it stranded in the empty space. It is invisible
+   until you scroll, which is why it only shows up in real use. */
+[data-framer-name="Variant 1"] > [data-framer-name="BG"]{
+  transition:opacity 130ms ease !important;
+}
+:root[data-fm-nav="collapsed"] [data-framer-name="Variant 1"] > [data-framer-name="BG"]{
+  opacity:0 !important;
 }`;
   doc.head.appendChild(sheet);
 
@@ -643,6 +740,7 @@ function patchMirror(doc: Document) {
   installNavCollapse(doc);
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
+  installWheelSmoothing(doc);
   installGrain(doc);
 }
 
