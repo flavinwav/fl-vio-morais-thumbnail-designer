@@ -523,6 +523,104 @@ function patchFooterSocials(doc: Document) {
   }
 }
 
+/**
+ * 6 — the floating nav stays above the page.
+ *
+ * The export already pins it (position:fixed, top:43px, backdrop blur), which
+ * is the behaviour we want, but at z-index 1 later sections can ride over it
+ * while scrolling. Lift it clear of the content, still under the grain layer
+ * and the site's own cursor.
+ */
+function patchNavLayering(doc: Document) {
+  const nav = doc.querySelector<HTMLElement>(".framer-1pcgty4-container");
+  if (!nav || nav.getAttribute(DONE) === "nav") return;
+  nav.setAttribute(DONE, "nav");
+  nav.style.setProperty("z-index", "9999900", "important");
+}
+
+/**
+ * 7 — testimonials read as a proper card grid.
+ *
+ * The section already lays out as `grid` with three 341px tracks and a 16px
+ * gap, so the layout itself is left alone. What made it look wrong is that
+ * every card wrapper is frozen at scale(0.5) — an appear animation that never
+ * settles — so each card filled half its track. Only that is undone here; card
+ * borders, radius, type and colour are untouched.
+ */
+function patchTestimonialCards(doc: Document) {
+  const grid = doc.querySelector<HTMLElement>(".framer-149wme3");
+  if (!grid) return;
+
+  grid.querySelectorAll<HTMLElement>('[class*="-container"]').forEach((box) => {
+    if (box.getAttribute(DONE) === "unscaled") return;
+    const transform = doc.defaultView?.getComputedStyle(box).transform ?? "";
+    if (!transform.startsWith("matrix(") || transform === "matrix(1, 0, 0, 1, 0, 0)") {
+      return;
+    }
+    box.setAttribute(DONE, "unscaled");
+    box.style.setProperty("transform", "none", "important");
+    box.style.setProperty("width", "100%", "important");
+  });
+}
+
+/**
+ * 8 — every testimonial gets a profile picture slot.
+ *
+ * Placeholders only: each carries a stable id and the person's name, so a real
+ * portrait can be dropped in per card later. The initial keeps it looking
+ * deliberate until then.
+ */
+function patchTestimonialAvatars(doc: Document) {
+  const cards = doc.querySelectorAll<HTMLElement>(
+    '[data-framer-name="Testimonial content card"]',
+  );
+
+  cards.forEach((card, index) => {
+    const container = card.querySelector<HTMLElement>(
+      '[data-framer-name="Profile container"]',
+    );
+    if (!container || container.querySelector("[data-fm-avatar]")) return;
+
+    const person =
+      container.querySelector("p")?.textContent?.trim() ?? `Client ${index + 1}`;
+
+    const slot = doc.createElement("div");
+    const slotId = `fm-avatar-${index + 1}`;
+    slot.id = slotId;
+    slot.setAttribute("data-fm-avatar", String(index + 1));
+    slot.setAttribute("data-fm-avatar-name", person);
+    slot.setAttribute("role", "img");
+    slot.setAttribute("aria-label", `${person} profile picture`);
+    slot.title = `${person} — ${slotId}`;
+    slot.textContent = person.slice(0, 1).toUpperCase();
+    slot.style.cssText = [
+      "flex:0 0 auto",
+      "width:40px",
+      "height:40px",
+      "border-radius:50%",
+      "display:flex",
+      "align-items:center",
+      "justify-content:center",
+      "background:rgba(179,215,255,0.10)",
+      "border:1px solid rgba(179,215,255,0.28)",
+      "background-size:cover",
+      "background-position:center",
+      "color:rgba(221,235,255,0.85)",
+      "font-size:15px",
+      "font-weight:500",
+      "line-height:1",
+      "overflow:hidden",
+      "user-select:none",
+    ].join(";");
+
+    container.style.setProperty("display", "flex");
+    container.style.setProperty("flex-direction", "row");
+    container.style.setProperty("align-items", "center");
+    container.style.setProperty("gap", "12px");
+    container.insertBefore(slot, container.firstChild);
+  });
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -531,6 +629,9 @@ function patchMirror(doc: Document) {
   patchSeeWorksLink(doc);
   patchAnchorScrolling(doc);
   patchFooterSocials(doc);
+  patchNavLayering(doc);
+  patchTestimonialCards(doc);
+  patchTestimonialAvatars(doc);
   installGrain(doc);
   installSmoothScroll(doc);
 }
