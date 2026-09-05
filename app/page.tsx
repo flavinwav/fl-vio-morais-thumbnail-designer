@@ -316,94 +316,6 @@ function smoothScrollTo(doc: Document, section: Element) {
 }
 
 /**
- * Light wheel smoothing.
- *
- * Each frame closes this fraction of the remaining distance. Lenis-style
- * smoothing sits around 0.1; the first attempt here used 0.08 *and* scaled the
- * wheel delta to 0.85, and the two compounded into something that read as slow
- * motion. Full travel per notch with a quicker settle keeps the smoothing
- * without the drag.
- */
-const SCROLL_LERP = 0.24;
-const installedScrollSmoothing = new WeakSet<Document>();
-
-function installWheelSmoothing(doc: Document) {
-  const win = doc.defaultView;
-  if (!win || installedScrollSmoothing.has(doc)) return;
-  installedScrollSmoothing.add(doc);
-
-  // Touch already scrolls smoothly, and reduced-motion means don't.
-  let disabled =
-    win.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-    win.matchMedia("(pointer: coarse)").matches;
-
-  const clamp = (y: number) =>
-    Math.max(
-      0,
-      Math.min(doc.documentElement.scrollHeight - win.innerHeight, y),
-    );
-
-  let target = win.scrollY;
-  let frame = 0;
-  let running = false;
-  let framesSeen = 0;
-
-  const stop = () => {
-    if (frame) win.cancelAnimationFrame(frame);
-    frame = 0;
-    running = false;
-  };
-
-  const tick = () => {
-    framesSeen += 1;
-    const current = win.scrollY;
-    const delta = target - current;
-    if (Math.abs(delta) < 0.5) {
-      win.scrollTo(0, target);
-      stop();
-      return;
-    }
-    win.scrollTo(0, current + delta * SCROLL_LERP);
-    frame = win.requestAnimationFrame(tick);
-  };
-
-  win.addEventListener(
-    "wheel",
-    (event: WheelEvent) => {
-      if (disabled || event.ctrlKey || event.metaKey || event.deltaY === 0) {
-        return;
-      }
-      const unit =
-        event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? win.innerHeight : 1;
-      target = clamp(target + event.deltaY * unit);
-      event.preventDefault();
-      if (running) return;
-      running = true;
-      frame = win.requestAnimationFrame(tick);
-      // If frames never arrive, stop swallowing wheel events and hand
-      // scrolling back to the browser.
-      win.setTimeout(() => {
-        if (framesSeen === 0) {
-          disabled = true;
-          stop();
-        }
-      }, 400);
-    },
-    { passive: false },
-  );
-
-  // Anything that moves the page without us — keyboard, scrollbar, anchor
-  // jumps — becomes the new starting point.
-  win.addEventListener(
-    "scroll",
-    () => {
-      if (!running) target = win.scrollY;
-    },
-    { passive: true },
-  );
-}
-
-/**
  * 4a — "See Works" points at the works section.
  *
  * The export ships href="./#work", but Framer's runtime overwrites it with its
@@ -732,6 +644,65 @@ function patchTestimonialAvatars(doc: Document) {
   });
 }
 
+/**
+ * 9 — un-stick the export's reveal animations.
+ *
+ * Two separate faults in the mirror's own scripts leave content half-faded:
+ *
+ * 1. The reveal-settling script snapshots getComputedStyle().opacity when an
+ *    element scrolls into view and pins it via
+ *    `.flow-reveal-locked{opacity:var(--flow-final-opacity)!important}`. It
+ *    only retries when that reading is near zero, so a mid-animation value —
+ *    0.45, say — is locked in permanently, transform offset included.
+ * 2. Timeline cards are `opacity:0 !important` until an IntersectionObserver
+ *    adds `.is-visible`. When that observer misses one, the card never appears.
+ *
+ * Neither is recoverable from inside those scripts, so the settled state is
+ * asserted here instead.
+ */
+function installRevealRepair(doc: Document) {
+  const win = doc.defaultView;
+  if (!win || doc.getElementById("fm-reveal-fix")) return;
+
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-reveal-fix";
+  // A settled reveal means fully shown and back in place — never a frame
+  // captured part-way there.
+  sheet.textContent = `
+.flow-reveal-locked{
+  opacity:1 !important;
+  transform:none !important;
+}`;
+  doc.head.appendChild(sheet);
+
+  const revealTimelineCards = () => {
+    doc
+      .querySelectorAll<HTMLElement>(".timeline-card:not(.is-visible)")
+      .forEach((card) => {
+        // Anything level with the fold or already behind us should be showing.
+        if (card.getBoundingClientRect().top < win.innerHeight * 0.95) {
+          card.classList.add("is-visible");
+        }
+      });
+  };
+
+  revealTimelineCards();
+
+  let queued = false;
+  win.addEventListener(
+    "scroll",
+    () => {
+      if (queued) return;
+      queued = true;
+      win.requestAnimationFrame(() => {
+        queued = false;
+        revealTimelineCards();
+      });
+    },
+    { passive: true },
+  );
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -744,7 +715,7 @@ function patchMirror(doc: Document) {
   installNavCollapse(doc);
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
-  installWheelSmoothing(doc);
+  installRevealRepair(doc);
   installGrain(doc);
 }
 

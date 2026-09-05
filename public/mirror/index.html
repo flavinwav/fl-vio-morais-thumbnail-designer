@@ -920,5 +920,90 @@ different countries</span></p></div></div></div><div class="framer-kioe8b" data-
 })();
 </script>
 
+<script>
+// === SLOW INERTIAL WHEEL SCROLL ===
+(function(){
+  function initInertialScroll() {
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var coarsePointer = window.matchMedia('(pointer: coarse)');
+    if (reducedMotion.matches || coarsePointer.matches) return;
+
+    var currentY = window.scrollY;
+    var targetY = currentY;
+    var frame = 0;
+    var scrolling = false;
+
+    function maxScrollY() {
+      var root = document.scrollingElement || document.documentElement;
+      return Math.max(0, root.scrollHeight - window.innerHeight);
+    }
+
+    function stopAndSync() {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+        frame = 0;
+      }
+      currentY = window.scrollY;
+      targetY = currentY;
+      scrolling = false;
+    }
+
+    function animate() {
+      var difference = targetY - currentY;
+      if (Math.abs(difference) < 0.35) {
+        currentY = targetY;
+        window.scrollTo({ top: currentY, left: 0, behavior: 'auto' });
+        frame = 0;
+        scrolling = false;
+        return;
+      }
+
+      currentY += difference * 0.085;
+      window.scrollTo({ top: currentY, left: 0, behavior: 'auto' });
+      frame = window.requestAnimationFrame(animate);
+    }
+
+    function start() {
+      if (scrolling) return;
+      scrolling = true;
+      frame = window.requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('wheel', function(event) {
+      if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
+
+      var multiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+      var delta = event.deltaY * multiplier;
+      targetY = Math.max(0, Math.min(maxScrollY(), targetY + delta * 0.72));
+      event.preventDefault();
+      start();
+    }, { passive: false });
+
+    window.addEventListener('scroll', function() {
+      if (!scrolling) {
+        currentY = window.scrollY;
+        targetY = currentY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('keydown', function(event) {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].indexOf(event.key) !== -1) {
+        stopAndSync();
+      }
+    }, { passive: true });
+
+    window.addEventListener('resize', function() {
+      targetY = Math.max(0, Math.min(maxScrollY(), targetY));
+      currentY = Math.max(0, Math.min(maxScrollY(), currentY));
+    }, { passive: true });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initInertialScroll, { once: true });
+  } else {
+    initInertialScroll();
+  }
+})();
+</script>
 </body>
 </html>
