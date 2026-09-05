@@ -763,6 +763,63 @@ ${SHEEN_SELECTOR}{
   doc.head.appendChild(sheet);
 }
 
+/**
+ * 11 — stop the button fill from looking like a tile sweeping through.
+ *
+ * Separately from the border sheen above, the same buttons animate their own
+ * fill: `background-size:200% 200%` with `background-position` sliding
+ * 0%→200% on a 2.5s loop (@keyframes btn-sweep). That doubles the gradient
+ * past the button's own edges, so the animation is really panning a window
+ * across it — and `background-repeat` is left at its default (`repeat`),
+ * which is load-bearing: past 100% the window has nothing left to show
+ * without it. The paint job's own two colour stops don't tile cleanly against
+ * that repeat, though — `rgb(6,43,120)` at 0% against `rgb(5,39,99)` at 100% —
+ * so every time the pattern wraps, that mismatch shows up as a hard-edged
+ * diagonal seam sweeping across the fill, exactly like a tile passing through.
+ *
+ * Matching the two endpoint colours removes the jump, but not the artefact —
+ * a sharp peak still meets a sharp trough at the seam, so the *rate* of colour
+ * change still kinks there even when the colour itself doesn't. What actually
+ * disappears it is a raised-cosine curve: eleven stops sampling
+ * `(1 − cos(2πt)) / 2` from t=0 to t=1, which brings the slope to zero at both
+ * ends, not just the colour. That's what a seamlessly tileable pulse needs.
+ * Verified by freezing the animation at both the 150% and 175% positions,
+ * where the wrap is on-screen — the raised-cosine fill held with no visible
+ * line in either, while the colour-matched-only version still showed one.
+ */
+const FILL_SELECTOR = [
+  ".framer-r5a756",
+  ".framer-8ttqe7",
+  ".framer-uNypv",
+  ".framer-kh0hjo",
+  ".framer-1iapdbm",
+].join(",");
+
+const RAISED_COSINE_FILL = [
+  "rgb(6,43,120) 0%",
+  "rgb(7,51,133) 10%",
+  "rgb(9,71,167) 20%",
+  "rgb(12,95,208) 30%",
+  "rgb(14,115,242) 40%",
+  "rgb(15,123,255) 50%",
+  "rgb(14,115,242) 60%",
+  "rgb(12,95,208) 70%",
+  "rgb(9,71,167) 80%",
+  "rgb(7,51,133) 90%",
+  "rgb(6,43,120) 100%",
+].join(",");
+
+function installButtonFillFix(doc: Document) {
+  if (doc.getElementById("fm-button-fill")) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-button-fill";
+  sheet.textContent = `
+${FILL_SELECTOR}{
+  background-image:linear-gradient(120deg,${RAISED_COSINE_FILL}) !important;
+}`;
+  doc.head.appendChild(sheet);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -777,6 +834,7 @@ function patchMirror(doc: Document) {
   patchTestimonialAvatars(doc);
   installRevealRepair(doc);
   installButtonSheenFix(doc);
+  installButtonFillFix(doc);
   installGodrayClipFix(doc);
   installGrain(doc);
 }

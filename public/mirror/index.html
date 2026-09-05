@@ -1,6 +1,20 @@
 <!doctype html>
 <html dir="ltr">
 <head>
+<style id="fm-early-godray-fix">
+/* The god-ray backdrop is position:fixed, meant to stay pinned to the
+   viewport. Framer sets will-change:transform inline on the "Opening"
+   section (.framer-fdvaze) as part of its own appear-animation setup.
+   Chromium establishes the containing block for a fixed descendant at
+   first paint, and once that relationship forms it does not get undone by
+   later removing will-change -- not via a later stylesheet override, not
+   by clearing the inline property directly, not by detaching/reattaching
+   either element. It has to never happen in the first place, so this has
+   to run before Framer's own scripts do; nothing injected after load can
+   fix it. Purely a rendering hint -- no visual color or animation
+   changes. */
+.framer-fdvaze{ will-change:auto !important; }
+</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width">
 	<title>Portfolio Contact</title>
