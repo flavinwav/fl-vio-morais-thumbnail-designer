@@ -728,6 +728,41 @@ function installGodrayClipFix(doc: Document) {
   doc.head.appendChild(sheet);
 }
 
+/**
+ * 10 — keep the button shine on the border instead of across the face.
+ *
+ * The blue buttons paint an animated sweep in ::before and confine it to a
+ * 1.5px ring with the usual two-layer mask trick. But both mask gradients are
+ * written `linear-gradient(#fff 0px, #fff 0px)` — every stop at 0px, so the
+ * gradient line has zero length. That degenerate gradient does not resolve to
+ * a solid mask, the `exclude` never punches out the content box, and the sweep
+ * paints across the whole button. What shows is the sweep's own 35%/65% stop
+ * as a hard vertical seam that drifts with the 2.4s animation.
+ *
+ * Giving the mask gradients a real length restores the ring.
+ */
+const SHEEN_SELECTOR = [
+  ".framer-r5a756::before",
+  ".framer-8ttqe7::before",
+  ".framer-uNypv::before",
+  ".framer-kh0hjo::before",
+  ".framer-1iapdbm::before",
+].join(",");
+
+function installButtonSheenFix(doc: Document) {
+  if (doc.getElementById("fm-button-sheen")) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-button-sheen";
+  sheet.textContent = `
+${SHEEN_SELECTOR}{
+  -webkit-mask:linear-gradient(#fff 0 100%) content-box,linear-gradient(#fff 0 100%) !important;
+  mask:linear-gradient(#fff 0 100%) content-box,linear-gradient(#fff 0 100%) !important;
+  -webkit-mask-composite:xor !important;
+  mask-composite:exclude !important;
+}`;
+  doc.head.appendChild(sheet);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -741,6 +776,7 @@ function patchMirror(doc: Document) {
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
   installRevealRepair(doc);
+  installButtonSheenFix(doc);
   installGodrayClipFix(doc);
   installGrain(doc);
 }
