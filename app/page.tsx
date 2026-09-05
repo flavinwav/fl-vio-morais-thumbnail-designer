@@ -703,6 +703,31 @@ function installRevealRepair(doc: Document) {
   );
 }
 
+/**
+ * 10 — stop the hero section clipping the god-ray backdrop.
+ *
+ * The backdrop is meant to be full-bleed: the export's own stylesheet pins it
+ * `position:fixed; inset:0; width:100vw; height:100vh`. But its ancestor — the
+ * "Opening" section — carries `will-change:transform`, which promotes that
+ * section into the containing block for fixed descendants. Two things follow:
+ * the backdrop resolves `inset:0` against the section rather than the viewport,
+ * and the section's `overflow:clip` then crops it at the section's own height.
+ * The result is a hard horizontal edge where the glow stops dead.
+ *
+ * `will-change` is only a performance hint here, so dropping it costs nothing
+ * and hands the backdrop back to the viewport.
+ */
+function installGodrayClipFix(doc: Document) {
+  if (doc.getElementById("fm-godray-fix")) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-godray-fix";
+  sheet.textContent = `
+.framer-fdvaze{
+  will-change:auto !important;
+}`;
+  doc.head.appendChild(sheet);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -716,6 +741,7 @@ function patchMirror(doc: Document) {
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
   installRevealRepair(doc);
+  installGodrayClipFix(doc);
   installGrain(doc);
 }
 
