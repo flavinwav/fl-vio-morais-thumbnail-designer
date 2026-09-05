@@ -263,144 +263,56 @@ function installGrain(doc: Document) {
   doc.body.appendChild(layer);
 }
 
-/** How much of the remaining distance is covered each frame — lower glides longer. */
-const SCROLL_LERP = 0.08;
-const WHEEL_FACTOR = 0.85;
-
-type ScrollController = { scrollToY: (y: number) => void };
-const scrollControllers = new WeakMap<Document, ScrollController>();
-
 /**
- * Smooth inertial scrolling.
+ * Anchor scrolling only — the wheel is left alone.
  *
- * Replaces the export's own wheel handler (removed from the mirror) so that
- * wheel input and in-page anchor jumps share one easing model instead of
- * fighting each other.
+ * The export's own inertial wheel handler was removed and nothing replaces it:
+ * plain native scrolling is what the wheel should feel like. The easing below
+ * runs only when an in-page link is clicked, and it is hand-rolled because
+ * Framer's motion runtime cancels the browser's own `behavior: "smooth"`, so
+ * `scrollIntoView` silently no-ops here.
  */
-function installSmoothScroll(doc: Document): ScrollController | null {
-  const cached = scrollControllers.get(doc);
-  if (cached) return cached;
-
-  const win = doc.defaultView;
-  if (!win) return null;
-
-  const maxY = () =>
-    Math.max(0, doc.documentElement.scrollHeight - win.innerHeight);
-  const clamp = (y: number) => Math.max(0, Math.min(maxY(), y));
-
-  // Touch devices already scroll smoothly, and reduced-motion means don't.
-  let disabled =
-    win.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-    win.matchMedia("(pointer: coarse)").matches;
-
-  let target = win.scrollY;
-  let frame = 0;
-  let running = false;
-  let framesSeen = 0;
-
-  const stop = () => {
-    if (frame) win.cancelAnimationFrame(frame);
-    frame = 0;
-    running = false;
-  };
-
-  const tick = () => {
-    framesSeen += 1;
-    const current = win.scrollY;
-    const delta = target - current;
-    if (Math.abs(delta) < 0.5) {
-      win.scrollTo(0, target);
-      stop();
-      return;
-    }
-    win.scrollTo(0, current + delta * SCROLL_LERP);
-    frame = win.requestAnimationFrame(tick);
-  };
-
-  const start = () => {
-    if (running || disabled) return;
-    running = true;
-    frame = win.requestAnimationFrame(tick);
-    // If frames never arrive (throttled renderer, hidden view), stop swallowing
-    // wheel events and hand scrolling back to the browser.
-    win.setTimeout(() => {
-      if (framesSeen === 0) {
-        disabled = true;
-        stop();
-      }
-    }, 400);
-  };
-
-  win.addEventListener(
-    "wheel",
-    (event: WheelEvent) => {
-      if (disabled || event.ctrlKey || event.metaKey || event.deltaY === 0) {
-        return;
-      }
-      const unit =
-        event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? win.innerHeight : 1;
-      target = clamp(target + event.deltaY * unit * WHEEL_FACTOR);
-      event.preventDefault();
-      start();
-    },
-    { passive: false },
-  );
-
-  // Keyboard, scrollbar drags and browser-driven scrolls move the page without
-  // us; adopt their position so the next wheel notch starts from the truth.
-  win.addEventListener(
-    "scroll",
-    () => {
-      if (!running) target = win.scrollY;
-    },
-    { passive: true },
-  );
-  win.addEventListener(
-    "resize",
-    () => {
-      target = clamp(target);
-    },
-    { passive: true },
-  );
-
-  const controller: ScrollController = {
-    scrollToY: (y: number) => {
-      const destination = clamp(y);
-      if (disabled) {
-        win.scrollTo(0, destination);
-        return;
-      }
-      target = destination;
-      start();
-      // Guarantee arrival even if the easing loop never runs.
-      win.setTimeout(() => {
-        if (Math.abs(win.scrollY - destination) > 4) {
-          win.scrollTo(0, destination);
-        }
-      }, 1200);
-    },
-  };
-
-  scrollControllers.set(doc, controller);
-  return controller;
-}
-
 function smoothScrollTo(doc: Document, section: Element) {
   const win = doc.defaultView;
   if (!win) return;
 
-  const target = win.scrollY + section.getBoundingClientRect().top;
-  const controller = installSmoothScroll(doc);
-  if (controller) {
-    controller.scrollToY(target);
-    return;
-  }
-
+  const start = win.scrollY;
   const maxScroll = Math.max(
     0,
     doc.documentElement.scrollHeight - win.innerHeight,
   );
-  win.scrollTo(0, Math.max(0, Math.min(target, maxScroll)));
+  const target = Math.max(
+    0,
+    Math.min(start + section.getBoundingClientRect().top, maxScroll),
+  );
+  const distance = target - start;
+  if (Math.abs(distance) < 2) return;
+
+  if (win.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    win.scrollTo(0, target);
+    return;
+  }
+
+  const duration = Math.min(700, Math.max(280, Math.abs(distance) * 0.35));
+  const startedAt = win.performance.now();
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
+  let settled = false;
+  const step = (now: number) => {
+    if (settled) return;
+    const progress = Math.min(1, (now - startedAt) / duration);
+    win.scrollTo(0, start + distance * ease(progress));
+    if (progress < 1) win.requestAnimationFrame(step);
+    else settled = true;
+  };
+  win.requestAnimationFrame(step);
+
+  // Animation frames can be starved; guarantee arrival regardless.
+  win.setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    win.scrollTo(0, target);
+  }, duration + 120);
 }
 
 /**
@@ -570,14 +482,24 @@ function installNavCollapse(doc: Document) {
   sheet.textContent = `
 [data-framer-name="Navigation Links"]{
   overflow:hidden !important;
+  white-space:nowrap !important;
   max-width:var(--fm-nav-links-w, 320px) !important;
-  transition:max-width 420ms ${ease}, margin-left 420ms ${ease}, opacity 220ms ease !important;
+  /* Opening: widen first, fade the labels in behind it. */
+  transition:max-width 360ms ${ease}, margin-left 360ms ${ease}, opacity 180ms ease 170ms !important;
+}
+/* Without this the labels compress as the track narrows and you watch
+   "Work Process About FAQ" squash itself flat. Fixed-size children are
+   clipped by the overflow instead, so they simply slide out of view. */
+[data-framer-name="Navigation Links"] > *{
+  flex:0 0 auto !important;
 }
 :root[data-fm-nav="collapsed"] [data-framer-name="Navigation Links"]{
   max-width:0 !important;
   opacity:0 !important;
   margin-left:calc(-1 * var(--fm-nav-gap, 45px)) !important;
   pointer-events:none !important;
+  /* Closing: fade out first, then take the width away. */
+  transition:opacity 130ms ease, max-width 360ms ${ease} 90ms, margin-left 360ms ${ease} 90ms !important;
 }`;
   doc.head.appendChild(sheet);
 
@@ -722,7 +644,6 @@ function patchMirror(doc: Document) {
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
   installGrain(doc);
-  installSmoothScroll(doc);
 }
 
 export default function Home() {
