@@ -324,7 +324,7 @@ function smoothScrollTo(doc: Document, section: Element) {
  * motion. Full travel per notch with a quicker settle keeps the smoothing
  * without the drag.
  */
-const SCROLL_LERP = 0.14;
+const SCROLL_LERP = 0.24;
 const installedScrollSmoothing = new WeakSet<Document>();
 
 function installWheelSmoothing(doc: Document) {
@@ -591,11 +591,15 @@ function installNavCollapse(doc: Document) {
 }
 /* The active-section highlight is a sibling of the links, not a child, so
    collapsing the track leaves it stranded in the empty space. It is invisible
-   until you scroll, which is why it only shows up in real use. */
-[data-framer-name="Variant 1"] > [data-framer-name="BG"]{
+   until you scroll, which is why it only shows up in real use.
+
+   Scoped to the fixed nav wrapper, NOT to a variant name: Framer swaps the
+   pill to a different variant once the page scrolls, so a rule hung off
+   [data-framer-name="Variant 1"] stops matching exactly when it is needed. */
+.framer-1pcgty4-container [data-framer-name="BG"]{
   transition:opacity 130ms ease !important;
 }
-:root[data-fm-nav="collapsed"] [data-framer-name="Variant 1"] > [data-framer-name="BG"]{
+:root[data-fm-nav="collapsed"] .framer-1pcgty4-container [data-framer-name="BG"]{
   opacity:0 !important;
 }`;
   doc.head.appendChild(sheet);
