@@ -703,123 +703,6 @@ function installRevealRepair(doc: Document) {
   );
 }
 
-/**
- * 10 — stop the hero section clipping the god-ray backdrop.
- *
- * The backdrop is meant to be full-bleed: the export's own stylesheet pins it
- * `position:fixed; inset:0; width:100vw; height:100vh`. But its ancestor — the
- * "Opening" section — carries `will-change:transform`, which promotes that
- * section into the containing block for fixed descendants. Two things follow:
- * the backdrop resolves `inset:0` against the section rather than the viewport,
- * and the section's `overflow:clip` then crops it at the section's own height.
- * The result is a hard horizontal edge where the glow stops dead.
- *
- * `will-change` is only a performance hint here, so dropping it costs nothing
- * and hands the backdrop back to the viewport.
- */
-function installGodrayClipFix(doc: Document) {
-  if (doc.getElementById("fm-godray-fix")) return;
-  const sheet = doc.createElement("style");
-  sheet.id = "fm-godray-fix";
-  sheet.textContent = `
-.framer-fdvaze{
-  will-change:auto !important;
-}`;
-  doc.head.appendChild(sheet);
-}
-
-/**
- * 10 — keep the button shine on the border instead of across the face.
- *
- * The blue buttons paint an animated sweep in ::before and confine it to a
- * 1.5px ring with the usual two-layer mask trick. But both mask gradients are
- * written `linear-gradient(#fff 0px, #fff 0px)` — every stop at 0px, so the
- * gradient line has zero length. That degenerate gradient does not resolve to
- * a solid mask, the `exclude` never punches out the content box, and the sweep
- * paints across the whole button. What shows is the sweep's own 35%/65% stop
- * as a hard vertical seam that drifts with the 2.4s animation.
- *
- * Giving the mask gradients a real length restores the ring.
- */
-const SHEEN_SELECTOR = [
-  ".framer-r5a756::before",
-  ".framer-8ttqe7::before",
-  ".framer-uNypv::before",
-  ".framer-kh0hjo::before",
-  ".framer-1iapdbm::before",
-].join(",");
-
-function installButtonSheenFix(doc: Document) {
-  if (doc.getElementById("fm-button-sheen")) return;
-  const sheet = doc.createElement("style");
-  sheet.id = "fm-button-sheen";
-  sheet.textContent = `
-${SHEEN_SELECTOR}{
-  -webkit-mask:linear-gradient(#fff 0 100%) content-box,linear-gradient(#fff 0 100%) !important;
-  mask:linear-gradient(#fff 0 100%) content-box,linear-gradient(#fff 0 100%) !important;
-  -webkit-mask-composite:xor !important;
-  mask-composite:exclude !important;
-}`;
-  doc.head.appendChild(sheet);
-}
-
-/**
- * 11 — stop the button fill from looking like a tile sweeping through.
- *
- * Separately from the border sheen above, the same buttons animate their own
- * fill: `background-size:200% 200%` with `background-position` sliding
- * 0%→200% on a 2.5s loop (@keyframes btn-sweep). That doubles the gradient
- * past the button's own edges, so the animation is really panning a window
- * across it — and `background-repeat` is left at its default (`repeat`),
- * which is load-bearing: past 100% the window has nothing left to show
- * without it. The paint job's own two colour stops don't tile cleanly against
- * that repeat, though — `rgb(6,43,120)` at 0% against `rgb(5,39,99)` at 100% —
- * so every time the pattern wraps, that mismatch shows up as a hard-edged
- * diagonal seam sweeping across the fill, exactly like a tile passing through.
- *
- * Matching the two endpoint colours removes the jump, but not the artefact —
- * a sharp peak still meets a sharp trough at the seam, so the *rate* of colour
- * change still kinks there even when the colour itself doesn't. What actually
- * disappears it is a raised-cosine curve: eleven stops sampling
- * `(1 − cos(2πt)) / 2` from t=0 to t=1, which brings the slope to zero at both
- * ends, not just the colour. That's what a seamlessly tileable pulse needs.
- * Verified by freezing the animation at both the 150% and 175% positions,
- * where the wrap is on-screen — the raised-cosine fill held with no visible
- * line in either, while the colour-matched-only version still showed one.
- */
-const FILL_SELECTOR = [
-  ".framer-r5a756",
-  ".framer-8ttqe7",
-  ".framer-uNypv",
-  ".framer-kh0hjo",
-  ".framer-1iapdbm",
-].join(",");
-
-const RAISED_COSINE_FILL = [
-  "rgb(6,43,120) 0%",
-  "rgb(7,51,133) 10%",
-  "rgb(9,71,167) 20%",
-  "rgb(12,95,208) 30%",
-  "rgb(14,115,242) 40%",
-  "rgb(15,123,255) 50%",
-  "rgb(14,115,242) 60%",
-  "rgb(12,95,208) 70%",
-  "rgb(9,71,167) 80%",
-  "rgb(7,51,133) 90%",
-  "rgb(6,43,120) 100%",
-].join(",");
-
-function installButtonFillFix(doc: Document) {
-  if (doc.getElementById("fm-button-fill")) return;
-  const sheet = doc.createElement("style");
-  sheet.id = "fm-button-fill";
-  sheet.textContent = `
-${FILL_SELECTOR}{
-  background-image:linear-gradient(120deg,${RAISED_COSINE_FILL}) !important;
-}`;
-  doc.head.appendChild(sheet);
-}
-
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -833,9 +716,6 @@ function patchMirror(doc: Document) {
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
   installRevealRepair(doc);
-  installButtonSheenFix(doc);
-  installButtonFillFix(doc);
-  installGodrayClipFix(doc);
   installGrain(doc);
 }
 
