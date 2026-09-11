@@ -746,6 +746,65 @@ function rerunLostProcessTimeline(doc: Document) {
   doc.body.appendChild(rerun);
 }
 
+/**
+ * 12 — make the blue buttons' sweeping fill loop without a seam.
+ *
+ * The export animates these buttons by panning `background-position` 0%→200%
+ * across a gradient tiled at `background-size:200% 200%`. Each time the pan
+ * crosses a tile boundary two things meet that don't match: the gradient ends
+ * on rgb(5,39,99) but starts on rgb(6,43,120), and it runs at 120deg while the
+ * tiles repeat horizontally. At that angle, crossing a tile sideways covers
+ * only ~86% of the gradient, so the two sides of the wrap sample different
+ * colours whatever the stops are — smoothing the stops alone still left a
+ * visible line. Only a gradient running along the tiling axis wraps exactly.
+ *
+ * So: Replit's own colours, rising from the dark end to the bright blue and
+ * back on a raised cosine (equal colour *and* zero slope at both ends), laid
+ * out at 90deg. Same animation, no seam. Verified by freezing the pan at 150%,
+ * where the boundary crosses the middle of the button.
+ */
+const SWEEP_CLASSES =
+  ".framer-r5a756, .framer-8ttqe7, .framer-uNypv, .framer-kh0hjo, .framer-1iapdbm";
+const SWEEP_ORIGINAL_END = "rgb(5, 39, 99)";
+const SWEEP_SEAMLESS = [
+  "rgb(6,43,120) 0%",
+  "rgb(7,51,133) 10%",
+  "rgb(9,71,167) 20%",
+  "rgb(12,95,208) 30%",
+  "rgb(14,115,242) 40%",
+  "rgb(15,123,255) 50%",
+  "rgb(14,115,242) 60%",
+  "rgb(12,95,208) 70%",
+  "rgb(9,71,167) 80%",
+  "rgb(7,51,133) 90%",
+  "rgb(6,43,120) 100%",
+].join(",");
+
+function installSeamlessButtonSweep(doc: Document) {
+  const win = doc.defaultView;
+  if (!win) return;
+
+  if (!doc.getElementById("fm-seamless-sweep")) {
+    const sheet = doc.createElement("style");
+    sheet.id = "fm-seamless-sweep";
+    sheet.textContent = `
+[data-fm-sweep]{
+  background-image:linear-gradient(90deg,${SWEEP_SEAMLESS}) !important;
+}`;
+    doc.head.appendChild(sheet);
+  }
+
+  // Tag only elements that actually paint the export's sweep gradient; the
+  // shared rule also lists classes (e.g. the nav CTA) that paint otherwise.
+  doc.querySelectorAll<HTMLElement>(SWEEP_CLASSES).forEach((el) => {
+    if (el.hasAttribute("data-fm-sweep")) return;
+    const bg = win.getComputedStyle(el).backgroundImage;
+    if (bg.includes("linear-gradient") && bg.includes(SWEEP_ORIGINAL_END)) {
+      el.setAttribute("data-fm-sweep", "");
+    }
+  });
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -760,6 +819,7 @@ function patchMirror(doc: Document) {
   patchTestimonialAvatars(doc);
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
+  installSeamlessButtonSweep(doc);
   installGrain(doc);
 }
 
