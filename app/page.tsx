@@ -805,6 +805,98 @@ function installSeamlessButtonSweep(doc: Document) {
   });
 }
 
+/**
+ * 13 — put every process-timeline dot on the line.
+ *
+ * Each card draws its dot as ::after, placed by a hardcoded offset from the
+ * card's edge: `right:-55px` for left-column cards, `left:-55px` for right.
+ * Two things break that:
+ *
+ * - Left-column cards also inherit `left:0` from another rule. With both
+ *   `left` and `right` set on a fixed-width absolute box, `left` wins, so
+ *   those dots sat on the card's own edge instead of the line.
+ * - The -55px assumes the card's edge lines up with its grid column. Cards are
+ *   capped at 460px and centred, so on wider screens they sit inset and even
+ *   the right-column dots land ~7px off the line.
+ *
+ * So the dot is placed from the line instead: measure the line (the grid's
+ * ::before, which moves to the left edge on mobile) and centre each dot on it.
+ * Written into a stylesheet keyed by each card's own class, because Framer
+ * rewrites these nodes' inline styles, and re-measured on resize.
+ */
+const timelineDotResize = new WeakSet<Document>();
+
+function alignTimelineDots(doc: Document) {
+  const win = doc.defaultView;
+  const grid = doc.querySelector<HTMLElement>(".framer-mbkrrr");
+  if (!win || !grid) return;
+
+  const cards = Array.from(grid.querySelectorAll<HTMLElement>(".timeline-card"));
+  if (!cards.length) return;
+
+  const gridRect = grid.getBoundingClientRect();
+  if (!gridRect.width) return;
+  const line = win.getComputedStyle(grid, "::before");
+  const lineX =
+    gridRect.left + parseFloat(line.left) + parseFloat(line.width) / 2;
+  if (!Number.isFinite(lineX)) return;
+
+  const rules: string[] = [];
+  for (const card of cards) {
+    const key = Array.from(card.classList).find(
+      (name) => name.startsWith("framer-") && name !== "framer-text",
+    );
+    if (!key) continue;
+
+    const dot = win.getComputedStyle(card, "::after");
+    let dotWidth = parseFloat(dot.width);
+    if (dot.boxSizing !== "border-box") {
+      dotWidth +=
+        parseFloat(dot.borderLeftWidth) + parseFloat(dot.borderRightWidth);
+    }
+    if (!Number.isFinite(dotWidth)) continue;
+
+    // ::after is positioned against the card's padding box.
+    const cardRect = card.getBoundingClientRect();
+    const cardStyle = win.getComputedStyle(card);
+    const originX = cardRect.left + parseFloat(cardStyle.borderLeftWidth);
+    const left = lineX - originX - dotWidth / 2;
+
+    rules.push(
+      `.${key}.timeline-card::after{left:${left.toFixed(2)}px !important;right:auto !important;}`,
+    );
+  }
+  if (!rules.length) return;
+
+  let sheet = doc.getElementById("fm-timeline-dots");
+  if (!sheet) {
+    sheet = doc.createElement("style");
+    sheet.id = "fm-timeline-dots";
+    doc.head.appendChild(sheet);
+  }
+  const css = rules.join("\n");
+  // Only write on change: a write is itself a DOM mutation and would re-run
+  // the patch pass.
+  if (sheet.textContent !== css) sheet.textContent = css;
+
+  if (!timelineDotResize.has(doc)) {
+    timelineDotResize.add(doc);
+    let queued = false;
+    win.addEventListener(
+      "resize",
+      () => {
+        if (queued) return;
+        queued = true;
+        win.requestAnimationFrame(() => {
+          queued = false;
+          alignTimelineDots(doc);
+        });
+      },
+      { passive: true },
+    );
+  }
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -820,6 +912,7 @@ function patchMirror(doc: Document) {
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
   installSeamlessButtonSweep(doc);
+  alignTimelineDots(doc);
   installGrain(doc);
 }
 
