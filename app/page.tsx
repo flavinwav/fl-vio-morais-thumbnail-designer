@@ -897,6 +897,67 @@ function alignTimelineDots(doc: Document) {
   }
 }
 
+/**
+ * 14 — add Bourick's review.
+ *
+ * Cloned from an existing card rather than built by hand, so it inherits the
+ * export's exact markup and styling. A card with a name but no company is used
+ * as the template, matching this review. Appended to the shortest column of
+ * every Review Grid variant (the export renders one per breakpoint), and
+ * re-added if Framer's hydration replaces the grid.
+ */
+const BOURICK_QUOTE = '"Muito criativo e versátil. Pode confiar!!"';
+const BOURICK_NAME = "Bourick";
+
+function addBourickReview(doc: Document) {
+  const grids = doc.querySelectorAll<HTMLElement>(".framer-149wme3");
+
+  grids.forEach((grid) => {
+    if (grid.querySelector('[data-fm-review="bourick"]')) return;
+
+    const cards = Array.from(
+      grid.querySelectorAll<HTMLElement>(
+        '[data-framer-name="Testimonial content card"]',
+      ),
+    );
+    // Template: a card whose profile carries just a name, like this review.
+    const template =
+      cards.find((card) => {
+        const names = card.querySelector('[data-framer-name="Name + designation"]');
+        return names ? names.querySelectorAll("p").length === 1 : false;
+      }) ?? cards[0];
+    if (!template) return;
+
+    const column = template.closest<HTMLElement>('[class*="-container"]')
+      ?.parentElement;
+    if (!column) return;
+
+    const clone = template.cloneNode(true) as HTMLElement;
+    clone.setAttribute("data-fm-review", "bourick");
+    // Drop any marks left by other patches so they re-apply cleanly.
+    clone.removeAttribute(DONE);
+    clone.querySelectorAll("[data-fm-avatar]").forEach((slot) => slot.remove());
+
+    const quote = clone.querySelector("p");
+    if (quote) quote.textContent = BOURICK_QUOTE;
+
+    const name = clone
+      .querySelector('[data-framer-name="Name + designation"]')
+      ?.querySelector("p");
+    if (name) name.textContent = BOURICK_NAME;
+
+    const wrapper = template.closest<HTMLElement>('[class*="-container"]');
+    if (wrapper) {
+      const holder = wrapper.cloneNode(false) as HTMLElement;
+      holder.style.removeProperty("transform");
+      holder.appendChild(clone);
+      column.appendChild(holder);
+    } else {
+      column.appendChild(clone);
+    }
+  });
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -908,6 +969,7 @@ function patchMirror(doc: Document) {
   patchNavLayering(doc);
   installNavCollapse(doc);
   patchTestimonialCards(doc);
+  addBourickReview(doc);
   patchTestimonialAvatars(doc);
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
