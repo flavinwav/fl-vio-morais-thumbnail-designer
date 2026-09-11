@@ -703,6 +703,49 @@ function installRevealRepair(doc: Document) {
   );
 }
 
+/**
+ * 12 — re-run the export's process timeline when hydration wipes it.
+ *
+ * The mirror's own DESIGN PROCESS TIMELINE script runs exactly once, at
+ * DOMContentLoaded, and tags the server-rendered grid (`.timeline-card`,
+ * `data-timeline-ready`). Framer's hydration then errors (React #405 — also
+ * thrown on the live Replit page) and client-renders fresh nodes, discarding
+ * those tags. Whether the script's work survives is a load-order race: on a
+ * fast host such as the Cloudflare edge the process section can come up with
+ * none of its timeline layout.
+ *
+ * The fix re-executes that same script rather than reimplementing it, so the
+ * behaviour stays byte-for-byte Replit's. It is idempotent — it returns early
+ * once the grid is marked ready — and capped, since each run also registers
+ * its own scroll/resize listeners.
+ */
+const TIMELINE_MARKER = "// === DESIGN PROCESS TIMELINE ===";
+const TIMELINE_MAX_RERUNS = 3;
+const timelineReruns = new WeakMap<Document, number>();
+
+function rerunLostProcessTimeline(doc: Document) {
+  const grid = doc.querySelector<HTMLElement>(".framer-mbkrrr");
+  if (!grid || grid.dataset.timelineReady === "true") return;
+
+  const hasCards = Array.from(grid.children).some((child) =>
+    (child.getAttribute("data-framer-name") ?? "").startsWith("Process Card"),
+  );
+  if (!hasCards) return;
+
+  const runs = timelineReruns.get(doc) ?? 0;
+  if (runs >= TIMELINE_MAX_RERUNS) return;
+
+  const original = Array.from(doc.querySelectorAll("script")).find((script) =>
+    (script.textContent ?? "").includes(TIMELINE_MARKER),
+  );
+  if (!original?.textContent || !doc.body) return;
+
+  timelineReruns.set(doc, runs + 1);
+  const rerun = doc.createElement("script");
+  rerun.textContent = original.textContent;
+  doc.body.appendChild(rerun);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   patchContractNowCta(doc);
@@ -715,6 +758,7 @@ function patchMirror(doc: Document) {
   installNavCollapse(doc);
   patchTestimonialCards(doc);
   patchTestimonialAvatars(doc);
+  rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
   installGrain(doc);
 }

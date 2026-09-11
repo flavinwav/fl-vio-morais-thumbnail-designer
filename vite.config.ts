@@ -18,7 +18,7 @@ const localBindingConfig = {
   // The page embeds /mirror/index.html by exact path. The default
   // auto-trailing-slash handling 307s that to /mirror/, which changes the URL
   // Framer's router hydrates against and breaks the embedded site.
-  assets: { html_handling: 'none' },
+  assets: { html_handling: 'none' as const },
   d1_databases: d1
     ? [
         {
