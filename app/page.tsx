@@ -593,6 +593,15 @@ function patchTestimonialCards(doc: Document) {
  * portrait can be dropped in per card later. The initial keeps it looking
  * deliberate until then.
  */
+/** Profile pictures served from public/avatars, keyed by reviewer name. */
+const AVATAR_BY_NAME: Record<string, string> = {
+  "Ali McKenzie": "/avatars/1.jpg",
+  Bourick: "/avatars/2.jpg",
+  Tutty: "/avatars/3.jpg",
+  "João": "/avatars/4.jpg",
+  Luiz: "/avatars/4.jpg",
+};
+
 function patchTestimonialAvatars(doc: Document) {
   const cards = doc.querySelectorAll<HTMLElement>(
     '[data-framer-name="Testimonial content card"]',
@@ -602,10 +611,22 @@ function patchTestimonialAvatars(doc: Document) {
     const container = card.querySelector<HTMLElement>(
       '[data-framer-name="Profile container"]',
     );
-    if (!container || container.querySelector("[data-fm-avatar]")) return;
+    if (!container) return;
 
+    const existing = container.querySelector<HTMLElement>("[data-fm-avatar]");
     const person =
       container.querySelector("p")?.textContent?.trim() ?? `Client ${index + 1}`;
+    const photo = AVATAR_BY_NAME[person];
+
+    // Framer can re-render a card after the slot exists; re-apply the photo.
+    if (existing) {
+      if (photo && existing.getAttribute("data-fm-avatar-src") !== photo) {
+        existing.setAttribute("data-fm-avatar-src", photo);
+        existing.textContent = "";
+        existing.style.backgroundImage = `url("${photo}")`;
+      }
+      return;
+    }
 
     const slot = doc.createElement("div");
     const slotId = `fm-avatar-${index + 1}`;
@@ -615,7 +636,8 @@ function patchTestimonialAvatars(doc: Document) {
     slot.setAttribute("role", "img");
     slot.setAttribute("aria-label", `${person} profile picture`);
     slot.title = `${person} — ${slotId}`;
-    slot.textContent = person.slice(0, 1).toUpperCase();
+    slot.textContent = photo ? "" : person.slice(0, 1).toUpperCase();
+    if (photo) slot.setAttribute("data-fm-avatar-src", photo);
     slot.style.cssText = [
       "flex:0 0 auto",
       "width:40px",
@@ -635,6 +657,7 @@ function patchTestimonialAvatars(doc: Document) {
       "overflow:hidden",
       "user-select:none",
     ].join(";");
+    if (photo) slot.style.backgroundImage = `url("${photo}")`;
 
     container.style.setProperty("display", "flex");
     container.style.setProperty("flex-direction", "row");
