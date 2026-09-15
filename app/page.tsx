@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
+import { BOURICK_QUOTE_EN, installI18n, ui } from "./i18n";
+
 const WHATSAPP_URL = "https://wa.me/5562991934046";
 const WHATSAPP_LABEL = "WhatsApp";
 const FORMSUBMIT_ENDPOINT =
@@ -82,7 +84,6 @@ function patchQuickChatCard(doc: Document) {
       card.setAttribute(DONE, "card");
       card.setAttribute("role", "link");
       card.setAttribute("tabindex", "0");
-      card.setAttribute("aria-label", "Quick chat on WhatsApp");
       card.style.cursor = "pointer";
 
       const open = () =>
@@ -99,6 +100,8 @@ function patchQuickChatCard(doc: Document) {
         open();
       });
     }
+
+    card.setAttribute("aria-label", ui(doc, "whatsappAria"));
 
     const icon = card.querySelector<SVGSVGElement>(
       'svg[data-framer-name="Discord Icon"]',
@@ -192,7 +195,7 @@ function patchContactForm(doc: Document) {
         });
 
       if (button) button.disabled = true;
-      setLabel(button, "Sending…");
+      setLabel(button, ui(doc, "sending"));
 
       fetch(FORMSUBMIT_ENDPOINT, {
         method: "POST",
@@ -207,7 +210,7 @@ function patchContactForm(doc: Document) {
           return response.json();
         })
         .then(() => {
-          setLabel(button, "✓ Sent!");
+          setLabel(button, ui(doc, "sent"));
           form.reset();
           setTimeout(() => {
             if (button) button.disabled = false;
@@ -216,7 +219,7 @@ function patchContactForm(doc: Document) {
         })
         .catch((error) => {
           console.error("Contact form submission failed", error);
-          setLabel(button, "Try again");
+          setLabel(button, ui(doc, "tryAgain"));
           setTimeout(() => {
             if (button) button.disabled = false;
             setLabel(button, original);
@@ -929,7 +932,7 @@ function alignTimelineDots(doc: Document) {
  * every Review Grid variant (the export renders one per breakpoint), and
  * re-added if Framer's hydration replaces the grid.
  */
-const BOURICK_QUOTE = '"Muito criativo e versátil. Pode confiar!!"';
+const BOURICK_QUOTE = BOURICK_QUOTE_EN;
 const BOURICK_NAME = "Bourick";
 
 function addBourickReview(doc: Document) {
@@ -1026,6 +1029,8 @@ function patchMirror(doc: Document) {
   installSeamlessButtonSweep(doc);
   alignTimelineDots(doc);
   installGrain(doc);
+  // Last, so it also covers text the patches above put on the page.
+  installI18n(doc);
 }
 
 export default function Home() {
