@@ -1,6 +1,15 @@
 <!doctype html>
 <html dir="ltr">
 <head>
+<style id="fm-early-godray-fix">
+/* The god-ray backdrop is position:fixed and should stay pinned to the
+   viewport. Framer sets will-change:transform on the "Opening" section
+   (.framer-fdvaze), which makes that 760px section the containing block for
+   the backdrop, so its overflow:clip cuts the glow off as you scroll. Chromium
+   fixes that containing block at first paint and later overrides don't undo
+   it, so this has to be in the document before Framer's scripts run. */
+.framer-fdvaze{ will-change:auto !important; }
+</style>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width">
 	<title>Portfolio Contact</title>

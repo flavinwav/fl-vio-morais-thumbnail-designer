@@ -964,21 +964,48 @@ function addBourickReview(doc: Document) {
     const quote = clone.querySelector("p");
     if (quote) quote.textContent = BOURICK_QUOTE;
 
-    const name = clone
-      .querySelector('[data-framer-name="Name + designation"]')
-      ?.querySelector("p");
+    const designation = clone.querySelector(
+      '[data-framer-name="Name + designation"]',
+    );
+    const name = designation?.querySelector("p");
     if (name) name.textContent = BOURICK_NAME;
+    // Bourick has no company; drop the template's second line (e.g. "Ideias de
+    // Chuveiro") instead of carrying it over from the card that was cloned.
+    if (designation) {
+      Array.from(designation.children)
+        .slice(1)
+        .forEach((line) => line.remove());
+    }
 
     const wrapper = template.closest<HTMLElement>('[class*="-container"]');
     if (wrapper) {
       const holder = wrapper.cloneNode(false) as HTMLElement;
+      holder.setAttribute("data-fm-review-holder", "bourick");
+      // The template wrapper carries Framer's pre-reveal state inline
+      // (opacity:0, will-change:transform). Real cards animate out of it; a
+      // clone never does, so it would take up space while staying invisible.
       holder.style.removeProperty("transform");
+      holder.style.removeProperty("opacity");
+      holder.style.removeProperty("will-change");
       holder.appendChild(clone);
       column.appendChild(holder);
     } else {
       column.appendChild(clone);
     }
   });
+
+  // Framer rewrites inline styles on hydration, so pin the visible state from
+  // a stylesheet as well.
+  if (grids.length && !doc.getElementById("fm-bourick-review")) {
+    const sheet = doc.createElement("style");
+    sheet.id = "fm-bourick-review";
+    sheet.textContent = `
+[data-fm-review-holder="bourick"],[data-fm-review="bourick"]{
+  opacity:1 !important;
+  transform:none !important;
+}`;
+    doc.head.appendChild(sheet);
+  }
 }
 
 function patchMirror(doc: Document) {
