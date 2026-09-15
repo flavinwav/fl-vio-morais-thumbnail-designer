@@ -686,18 +686,41 @@ function patchTestimonialAvatars(doc: Document) {
  * Neither is recoverable from inside those scripts, so the settled state is
  * asserted here instead.
  */
+/**
+ * Pinned opacities at or above this were caught mid-reveal and should finish
+ * at 1. Below it the element is meant to be faint — the hero's divider lines
+ * settle at 0.1 on the original site and must stay that way.
+ */
+const REVEAL_FULL_FROM = 0.3;
+const revealRepairInstalled = new WeakSet<Document>();
+
+function markSettledReveals(doc: Document) {
+  doc
+    .querySelectorAll<HTMLElement>(".flow-reveal-locked:not([data-fm-reveal])")
+    .forEach((el) => {
+      const pinned = parseFloat(el.style.getPropertyValue("--flow-final-opacity"));
+      if (!Number.isFinite(pinned)) return;
+      el.setAttribute("data-fm-reveal", pinned >= REVEAL_FULL_FROM ? "full" : "faint");
+    });
+}
+
 function installRevealRepair(doc: Document) {
   const win = doc.defaultView;
-  if (!win || doc.getElementById("fm-reveal-fix")) return;
+  if (!win) return;
+  markSettledReveals(doc);
+  if (revealRepairInstalled.has(doc)) return;
+  revealRepairInstalled.add(doc);
 
   const sheet = doc.createElement("style");
   sheet.id = "fm-reveal-fix";
-  // A settled reveal means fully shown and back in place — never a frame
-  // captured part-way there.
+  // Offsets are always cleared; opacity is only lifted for reveals that were
+  // pinned part-way through fading in.
   sheet.textContent = `
 .flow-reveal-locked{
-  opacity:1 !important;
   transform:none !important;
+}
+.flow-reveal-locked[data-fm-reveal="full"]{
+  opacity:1 !important;
 }`;
   doc.head.appendChild(sheet);
 
@@ -715,18 +738,128 @@ function installRevealRepair(doc: Document) {
   revealTimelineCards();
 
   let queued = false;
-  win.addEventListener(
-    "scroll",
-    () => {
-      if (queued) return;
-      queued = true;
-      win.requestAnimationFrame(() => {
-        queued = false;
-        revealTimelineCards();
-      });
-    },
-    { passive: true },
-  );
+  const schedule = () => {
+    if (queued) return;
+    queued = true;
+    win.requestAnimationFrame(() => {
+      queued = false;
+      revealTimelineCards();
+      markSettledReveals(doc);
+    });
+  };
+  win.addEventListener("scroll", schedule, { passive: true });
+  // The pin lands on a timer after an element scrolls into view, not on a
+  // scroll event, so also watch for the class being added.
+  new win.MutationObserver(schedule).observe(doc.documentElement, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+}
+
+/**
+ * The blue buttons' white shine: a gradient sweep in ::before, meant to be
+ * confined to a 1.5px ring by the two-layer mask trick. The export writes both
+ * mask gradients as `linear-gradient(#fff 0 0)` — zero length — so the mask
+ * never resolves, the exclude does nothing, and the sweep washes across the
+ * whole face instead of running along the border. Giving the gradients a real
+ * length restores the ring.
+ */
+const SHEEN_SELECTOR = [
+  ".framer-r5a756::before",
+  ".framer-8ttqe7::before",
+  ".framer-uNypv::before",
+  ".framer-kh0hjo::before",
+  ".framer-1iapdbm::before",
+].join(",");
+
+function installButtonSheenFix(doc: Document) {
+  if (doc.getElementById("fm-button-sheen") || !doc.head) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-button-sheen";
+  sheet.textContent = `
+${SHEEN_SELECTOR}{
+  -webkit-mask:linear-gradient(#fff 0 100%) content-box,linear-gradient(#fff 0 100%) !important;
+  mask:linear-gradient(#fff 0 100%) content-box,linear-gradient(#fff 0 100%) !important;
+  -webkit-mask-composite:xor !important;
+  mask-composite:exclude !important;
+}`;
+  doc.head.appendChild(sheet);
+}
+
+/**
+ * Nav highlight follows the real links.
+ *
+ * The export positions the active-section pill per variant with fixed
+ * left/width values measured for the English labels (Work 189/66, Process
+ * 258/83, About 350/66, FAQ 420/53). Wider Portuguese labels shift the links,
+ * so the pill landed off target. Each variant is re-anchored to its link's
+ * actual box, in either language, and re-measured on resize — which the
+ * language switch triggers.
+ */
+const NAV_HIGHLIGHT_VARIANTS: ReadonlyArray<readonly [string, string]> = [
+  ["framer-v-rf4o94", "Work Link"],
+  ["framer-v-143sako", "Process Link"],
+  ["framer-v-1jxwi6s", "About Link"],
+  ["framer-v-ka5joz", "FAQ Link"],
+];
+const NAV_HIGHLIGHT_PAD = 22;
+const navHighlightResize = new WeakSet<Document>();
+
+function alignNavHighlight(doc: Document) {
+  const win = doc.defaultView;
+  const wrapper = doc.querySelector<HTMLElement>(".framer-1pcgty4-container");
+  if (!win || !wrapper) return;
+
+  if (!navHighlightResize.has(doc)) {
+    navHighlightResize.add(doc);
+    let queued = false;
+    win.addEventListener(
+      "resize",
+      () => {
+        if (queued) return;
+        queued = true;
+        win.requestAnimationFrame(() => {
+          queued = false;
+          alignNavHighlight(doc);
+        });
+      },
+      { passive: true },
+    );
+  }
+
+  const bg = wrapper.querySelector<HTMLElement>('[data-framer-name="BG"]');
+  const pill = bg?.parentElement;
+  if (!bg || !pill) return;
+  // Collapsed links have no usable boxes; keep the last good measurement.
+  if (doc.documentElement.getAttribute("data-fm-nav") === "collapsed") return;
+
+  const pillRect = pill.getBoundingClientRect();
+  if (!pillRect.width) return;
+  const originX =
+    pillRect.left + (parseFloat(win.getComputedStyle(pill).borderLeftWidth) || 0);
+
+  const rules: string[] = [];
+  for (const [variant, linkName] of NAV_HIGHLIGHT_VARIANTS) {
+    const link = pill.querySelector<HTMLElement>(`[data-framer-name="${linkName}"]`);
+    const rect = link?.getBoundingClientRect();
+    if (!rect || !rect.width) continue;
+    const left = rect.left - originX - NAV_HIGHLIGHT_PAD / 2;
+    const width = rect.width + NAV_HIGHLIGHT_PAD;
+    rules.push(
+      `.framer-vYDYQ.${variant} .framer-13522nk{left:${left.toFixed(1)}px !important;width:${width.toFixed(1)}px !important;}`,
+    );
+  }
+  if (!rules.length) return;
+
+  let sheet = doc.getElementById("fm-nav-highlight");
+  if (!sheet) {
+    sheet = doc.createElement("style");
+    sheet.id = "fm-nav-highlight";
+    doc.head.appendChild(sheet);
+  }
+  const css = rules.join("\n");
+  if (sheet.textContent !== css) sheet.textContent = css;
 }
 
 /**
@@ -1029,6 +1162,8 @@ function patchMirror(doc: Document) {
   installSeamlessButtonSweep(doc);
   alignTimelineDots(doc);
   installGrain(doc);
+  installButtonSheenFix(doc);
+  alignNavHighlight(doc);
   // Last, so it also covers text the patches above put on the page.
   installI18n(doc);
 }

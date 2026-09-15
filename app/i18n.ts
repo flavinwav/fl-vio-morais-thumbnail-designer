@@ -99,7 +99,8 @@ export const PT: Record<string, string> = {
 
   // Testimonials
   Testimonials: "Depoimentos",
-  "Partners in different countries": "Parceiros em diferentes países",
+  // Rendered with white-space:pre in a narrow card: keep the source line break.
+  "Partners in different countries": "Parceiros em\ndiferentes países",
   '"Man, you nailed it, I think that was the work of yours I liked the most out of everything you’ve done for us; it was exactly what I had in mind, congratulations."':
     '"Cara, você acertou em cheio, acho que foi o trabalho seu de que mais gostei entre tudo o que você fez pra gente; era exatamente o que eu tinha em mente, parabéns."',
   '"Hi Flávio, your work is always great, thanks again 5/5 stars"':
@@ -375,6 +376,23 @@ function renderToggle(doc: Document, onPick: (lang: Lang) => void) {
   });
 }
 
+/**
+ * Portuguese runs longer than some of the export's fixed-height text boxes.
+ * The contact heading's wrapper is a fixed 336px with overflow:clip, so the
+ * extra line was cut off; in Portuguese it may grow to fit.
+ */
+function ensureLayoutFixes(doc: Document) {
+  if (doc.getElementById("fm-i18n-layout") || !doc.head) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-i18n-layout";
+  sheet.textContent = `
+:root[lang="pt-BR"] .framer-19x4q0q{
+  height:auto !important;
+  overflow:visible !important;
+}`;
+  doc.head.appendChild(sheet);
+}
+
 const installed = new WeakSet<Document>();
 const pending = new WeakSet<Document>();
 
@@ -383,6 +401,7 @@ function apply(doc: Document, lang: Lang) {
   const changed = langOf(doc) !== lang;
   currentLang.set(doc, lang);
   doc.documentElement.lang = lang === "pt" ? "pt-BR" : "en";
+  ensureLayoutFixes(doc);
   translateBlocks(doc, lang);
   renderToggle(doc, (picked) => {
     if (win) safeStorage(win)?.setItem(STORAGE_KEY, picked);
