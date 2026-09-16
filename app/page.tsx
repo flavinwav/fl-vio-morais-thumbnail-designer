@@ -340,7 +340,7 @@ function patchSeeWorksLink(doc: Document) {
  * 4b — in-page links actually scroll.
  *
  * Inside the iframe the document is /mirror/index.html, and Framer rewrites
- * in-page links to "./?v=godray-full-3#section". That resolves to /mirror/ — a
+ * in-page links to "./?v=godray-stable-1#section". That resolves to /mirror/ — a
  * different path — so the browser reloads instead of scrolling.
  */
 function patchAnchorScrolling(doc: Document) {
@@ -687,21 +687,42 @@ function patchTestimonialAvatars(doc: Document) {
  * asserted here instead.
  */
 /**
- * Pinned opacities at or above this were caught mid-reveal and should finish
- * at 1. Below it the element is meant to be faint — the hero's divider lines
- * settle at 0.1 on the original site and must stay that way.
+ * The snapshot can't be trusted at all: on load it often reads 0 because
+ * Framer's own animation hadn't started yet, which left the hero buttons and
+ * text invisible or faint (reproduced on the live Replit page too). Framer
+ * still writes each element's real end state inline — 1 for most, 0.1 for the
+ * hero's divider lines — so the pin follows the highest opacity Framer has
+ * given the element instead. Highest, so a later fade-out replay can't dim it.
  */
-const REVEAL_FULL_FROM = 0.3;
 const revealRepairInstalled = new WeakSet<Document>();
+const revealWatched = new WeakSet<HTMLElement>();
+const revealPeak = new WeakMap<HTMLElement, number>();
+
+function settleReveal(el: HTMLElement) {
+  const inline = parseFloat(el.style.opacity);
+  // No inline opacity means Framer has finished and handed back to CSS.
+  const current = Number.isFinite(inline) ? inline : 1;
+  const peak = Math.max(revealPeak.get(el) ?? 0, current);
+  revealPeak.set(el, peak);
+  const value = String(peak);
+  // Only write on change: this is itself a style mutation we observe.
+  if (el.style.getPropertyValue("--flow-final-opacity") !== value) {
+    el.style.setProperty("--flow-final-opacity", value);
+  }
+}
 
 function markSettledReveals(doc: Document) {
-  doc
-    .querySelectorAll<HTMLElement>(".flow-reveal-locked:not([data-fm-reveal])")
-    .forEach((el) => {
-      const pinned = parseFloat(el.style.getPropertyValue("--flow-final-opacity"));
-      if (!Number.isFinite(pinned)) return;
-      el.setAttribute("data-fm-reveal", pinned >= REVEAL_FULL_FROM ? "full" : "faint");
+  const win = doc.defaultView;
+  if (!win) return;
+  doc.querySelectorAll<HTMLElement>(".flow-reveal-locked").forEach((el) => {
+    settleReveal(el);
+    if (revealWatched.has(el)) return;
+    revealWatched.add(el);
+    new win.MutationObserver(() => settleReveal(el)).observe(el, {
+      attributes: true,
+      attributeFilter: ["style"],
     });
+  });
 }
 
 function installRevealRepair(doc: Document) {
@@ -713,14 +734,10 @@ function installRevealRepair(doc: Document) {
 
   const sheet = doc.createElement("style");
   sheet.id = "fm-reveal-fix";
-  // Offsets are always cleared; opacity is only lifted for reveals that were
-  // pinned part-way through fading in.
+  // Offsets are always cleared; opacity comes from settleReveal.
   sheet.textContent = `
 .flow-reveal-locked{
   transform:none !important;
-}
-.flow-reveal-locked[data-fm-reveal="full"]{
-  opacity:1 !important;
 }`;
   doc.head.appendChild(sheet);
 
@@ -750,7 +767,12 @@ function installRevealRepair(doc: Document) {
   win.addEventListener("scroll", schedule, { passive: true });
   // The pin lands on a timer after an element scrolls into view, not on a
   // scroll event, so also watch for the class being added.
-  new win.MutationObserver(schedule).observe(doc.documentElement, {
+  // Settled straight away rather than on the next frame: a tab opened in the
+  // background gets no animation frames, and the lock must not wait for one.
+  new win.MutationObserver(() => {
+    markSettledReveals(doc);
+    schedule();
+  }).observe(doc.documentElement, {
     subtree: true,
     attributes: true,
     attributeFilter: ["class"],
@@ -946,8 +968,10 @@ function installSeamlessButtonSweep(doc: Document) {
   if (!doc.getElementById("fm-seamless-sweep")) {
     const sheet = doc.createElement("style");
     sheet.id = "fm-seamless-sweep";
+    // Not while hovered: Framer's hover variant paints these buttons white,
+    // and an !important gradient here would hide that.
     sheet.textContent = `
-[data-fm-sweep]{
+[data-fm-sweep]:not(:hover){
   background-image:linear-gradient(90deg,${SWEEP_SEAMLESS}) !important;
 }`;
     doc.head.appendChild(sheet);
@@ -1087,9 +1111,14 @@ function addBourickReview(doc: Document) {
       }) ?? cards[0];
     if (!template) return;
 
-    const column = template.closest<HTMLElement>('[class*="-container"]')
+    // Middle of the grid: the centre column, halfway down it. On a one-column
+    // layout that is simply the middle of the list.
+    const templateColumn = template.closest<HTMLElement>('[class*="-container"]')
       ?.parentElement;
+    const columns = Array.from(templateColumn?.parentElement?.children ?? []);
+    const column = columns[Math.floor(columns.length / 2)] as HTMLElement | undefined;
     if (!column) return;
+    const anchor = column.children[Math.floor(column.children.length / 2)] ?? null;
 
     const clone = template.cloneNode(true) as HTMLElement;
     clone.setAttribute("data-fm-review", "bourick");
@@ -1124,19 +1153,32 @@ function addBourickReview(doc: Document) {
       holder.style.removeProperty("opacity");
       holder.style.removeProperty("will-change");
       holder.appendChild(clone);
-      column.appendChild(holder);
+      column.insertBefore(holder, anchor);
+      revealBourickWhenSeen(holder);
     } else {
-      column.appendChild(clone);
+      clone.setAttribute("data-fm-review-holder", "bourick");
+      column.insertBefore(clone, anchor);
+      revealBourickWhenSeen(clone);
     }
   });
 
-  // Framer rewrites inline styles on hydration, so pin the visible state from
-  // a stylesheet as well.
+  // The clone is outside Framer's animation system, so its entrance is done
+  // here: the same fade-and-grow-from-half-size the other cards use, played
+  // once when it scrolls into view.
   if (grids.length && !doc.getElementById("fm-bourick-review")) {
     const sheet = doc.createElement("style");
     sheet.id = "fm-bourick-review";
     sheet.textContent = `
-[data-fm-review-holder="bourick"],[data-fm-review="bourick"]{
+[data-fm-review="bourick"]{
+  opacity:1 !important;
+  transform:none !important;
+}
+[data-fm-review-holder="bourick"]{
+  opacity:0 !important;
+  transform:scale(0.5) !important;
+  transition:opacity .6s ease,transform .9s cubic-bezier(.34,1.25,.5,1) !important;
+}
+[data-fm-review-holder="bourick"][data-fm-seen]{
   opacity:1 !important;
   transform:none !important;
 }`;
@@ -1144,8 +1186,133 @@ function addBourickReview(doc: Document) {
   }
 }
 
+function revealBourickWhenSeen(holder: HTMLElement) {
+  const win = holder.ownerDocument.defaultView;
+  if (!win || !("IntersectionObserver" in win)) {
+    holder.setAttribute("data-fm-seen", "");
+    return;
+  }
+  const observer = new win.IntersectionObserver(
+    (entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      observer.disconnect();
+      holder.setAttribute("data-fm-seen", "");
+    },
+    { threshold: 0.2 },
+  );
+  observer.observe(holder);
+}
+
+/**
+ * 15 — hero god-ray: no crop, no flicker.
+ *
+ * The rays are a WebGL shader in a data: iframe. Two faults in it:
+ *
+ * - Crop: the shader is drawn at a fixed 1200×1024, so on any window wider
+ *   than 1200px the rays stop in a hard vertical edge.
+ * - Flicker: it pulls its script from unpkg's `@latest` (a redirect plus
+ *   ~90KB) every time the iframe is created — and Framer's hydration creates
+ *   it twice. Depending on that race the rays showed, went black, and came
+ *   back.
+ *
+ * The iframe is kept hidden until it is patched (see fm-godray-boot in the
+ * mirror head): its shader is sized to cover the window and loads a
+ * self-hosted, pinned copy of the script (public/mirror/vendor, MIT). It fades in once, after hydration
+ * has replaced the server-rendered node, so it never appears and restarts.
+ */
+const GODRAY_IFRAME = ".framer-1iwwyw3-container iframe";
+const GODRAY_SETTLE_MS = 500;
+const GODRAY_MIN_W = 1200;
+const GODRAY_MIN_H = 1024;
+const godraySeen = new WeakMap<HTMLIFrameElement, number>();
+
+function godraySource(original: string, win: Window): string | null {
+  const comma = original.indexOf(",");
+  if (!original.startsWith("data:text/html;base64,") || comma < 0) return null;
+  let html: string;
+  try {
+    html = new TextDecoder().decode(
+      Uint8Array.from(win.atob(original.slice(comma + 1)), (c) => c.charCodeAt(0)),
+    );
+  } catch {
+    return null;
+  }
+  // Never smaller than the original, so up to 1200px wide nothing changes.
+  const width = Math.max(GODRAY_MIN_W, Math.ceil(win.innerWidth));
+  const height = Math.max(GODRAY_MIN_H, Math.ceil(win.innerHeight));
+  html = html
+    .replace(
+      /<script src="https:\/\/unpkg\.com\/media-shader@[^"]*"><\/script>/,
+      '<script src="/mirror/vendor/media-shader.js"></script>',
+    )
+    .replace(/<media-shader\b/, '<media-shader loading="eager"')
+    .replace(/width="1200px"/, `width="${width}px"`)
+    .replace(/height="1024px"/, `height="${height}px"`);
+  return html;
+}
+
+function installStableGodray(doc: Document) {
+  const win = doc.defaultView;
+  if (!win) return;
+
+  doc.querySelectorAll<HTMLIFrameElement>(GODRAY_IFRAME).forEach((frame) => {
+    if (frame.hasAttribute("data-fm-godray")) return;
+    const first = godraySeen.get(frame);
+    if (first === undefined) {
+      godraySeen.set(frame, Date.now());
+      // Revisit once hydration has had its chance to replace this node.
+      win.setTimeout(() => installStableGodray(doc), GODRAY_SETTLE_MS + 50);
+      return;
+    }
+    if (Date.now() - first < GODRAY_SETTLE_MS || !frame.isConnected) return;
+
+    godrayOriginal.set(frame, frame.getAttribute("src") ?? "");
+    loadGodray(frame, win);
+  });
+
+  if (!godrayResize.has(doc)) {
+    godrayResize.add(doc);
+    let timer = 0;
+    win.addEventListener("resize", () => {
+      win.clearTimeout(timer);
+      timer = win.setTimeout(() => {
+        // Only a window grown past the drawn width uncovers an edge.
+        doc.querySelectorAll<HTMLIFrameElement>(GODRAY_IFRAME).forEach((frame) => {
+          const drawn = godrayWidth.get(frame);
+          if (drawn !== undefined && win.innerWidth > drawn) loadGodray(frame, win);
+        });
+      }, 250);
+    });
+  }
+}
+
+const godrayOriginal = new WeakMap<HTMLIFrameElement, string>();
+const godrayWidth = new WeakMap<HTMLIFrameElement, number>();
+const godrayResize = new WeakSet<Document>();
+
+function loadGodray(frame: HTMLIFrameElement, win: Window) {
+  const src = godraySource(godrayOriginal.get(frame) ?? "", win);
+  if (!src) {
+    frame.setAttribute("data-fm-godray", "ready");
+    return;
+  }
+  godrayWidth.set(frame, Math.max(GODRAY_MIN_W, Math.ceil(win.innerWidth)));
+  frame.setAttribute("data-fm-godray", "loading");
+  frame.addEventListener(
+    "load",
+    // A few frames for the shader's first draw before fading in.
+    () => win.setTimeout(() => frame.setAttribute("data-fm-godray", "ready"), 120),
+    { once: true },
+  );
+  // srcdoc rather than a new data: URL: it shares the page's origin, so the
+  // self-hosted script loads like any other asset. It also takes precedence
+  // over the src Framer renders.
+  frame.setAttribute("srcdoc", src);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
+  installStableGodray(doc);
   patchContractNowCta(doc);
   patchQuickChatCard(doc);
   patchContactForm(doc);
@@ -1227,7 +1394,7 @@ export default function Home() {
       <iframe
         ref={frameRef}
         className="mirror-frame"
-        src="/mirror/index.html?v=godray-full-3"
+        src="/mirror/index.html?v=godray-stable-1"
         title="Flávio Morais — Thumbnail and visual designer"
         onLoad={attachToMirror}
       />

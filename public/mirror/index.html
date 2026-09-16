@@ -719,6 +719,12 @@ html,body,#main{width:100%!important;min-width:0!important;max-width:none!import
 .framer-ZShEI .framer-1iwwyw3-container{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;z-index:0!important}
 .framer-ZShEI .framer-1iwwyw3-container iframe{width:100%!important;height:100%!important;filter:none!important;opacity:1!important}
 </style>
+<style id="fm-godray-boot">
+/* The god-ray iframe stays hidden until app/page.tsx has patched it
+   (installStableGodray), then fades in once. */
+.framer-ZShEI .framer-1iwwyw3-container iframe{opacity:0!important;transition:opacity .9s ease}
+.framer-ZShEI .framer-1iwwyw3-container iframe[data-fm-godray="ready"]{opacity:1!important}
+</style>
 </head>
 <body>
 	
