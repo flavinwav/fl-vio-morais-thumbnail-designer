@@ -1124,6 +1124,8 @@ function addBourickReview(doc: Document) {
     clone.setAttribute("data-fm-review", "bourick");
     // Drop any marks left by other patches so they re-apply cleanly.
     clone.removeAttribute(DONE);
+    // Listeners aren't cloned, so the link patch has to see this card as new.
+    clone.removeAttribute("data-fm-review-link");
     clone.querySelectorAll("[data-fm-avatar]").forEach((slot) => slot.remove());
 
     const quote = clone.querySelector("p");
@@ -1226,7 +1228,7 @@ const GODRAY_MIN_W = 1200;
 const GODRAY_MIN_H = 1024;
 const godraySeen = new WeakMap<HTMLIFrameElement, number>();
 
-function godraySource(original: string, win: Window): string | null {
+function godraySource(original: string, win: Window, script: string): string | null {
   const comma = original.indexOf(",");
   if (!original.startsWith("data:text/html;base64,") || comma < 0) return null;
   let html: string;
@@ -1243,12 +1245,30 @@ function godraySource(original: string, win: Window): string | null {
   html = html
     .replace(
       /<script src="https:\/\/unpkg\.com\/media-shader@[^"]*"><\/script>/,
-      '<script src="/mirror/vendor/media-shader.js"></script>',
+      () => `<script>${script}</script>`,
     )
-    .replace(/<media-shader\b/, '<media-shader loading="eager"')
     .replace(/width="1200px"/, `width="${width}px"`)
     .replace(/height="1024px"/, `height="${height}px"`);
-  return html;
+  const bytes = new TextEncoder().encode(html);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return `data:text/html;base64,${win.btoa(binary)}`;
+}
+
+let shaderScript: Promise<string> | null = null;
+
+/** The self-hosted media-shader source, fetched once. */
+function loadShaderScript(win: Window): Promise<string> {
+  shaderScript ??= win
+    .fetch("/mirror/vendor/media-shader.js")
+    .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
+    .catch((error) => {
+      shaderScript = null;
+      throw error;
+    });
+  return shaderScript;
 }
 
 function installStableGodray(doc: Document) {
@@ -1291,23 +1311,108 @@ const godrayWidth = new WeakMap<HTMLIFrameElement, number>();
 const godrayResize = new WeakSet<Document>();
 
 function loadGodray(frame: HTMLIFrameElement, win: Window) {
-  const src = godraySource(godrayOriginal.get(frame) ?? "", win);
-  if (!src) {
+  frame.setAttribute("data-fm-godray", "loading");
+  loadShaderScript(win).then(
+    (script) => applyGodray(frame, win, script),
+    // Without our copy, fall back to the export's own iframe as it was.
+    () => frame.setAttribute("data-fm-godray", "ready"),
+  );
+}
+
+function applyGodray(frame: HTMLIFrameElement, win: Window, script: string) {
+  const src = godraySource(godrayOriginal.get(frame) ?? "", win, script);
+  if (!src || !frame.isConnected) {
     frame.setAttribute("data-fm-godray", "ready");
     return;
   }
   godrayWidth.set(frame, Math.max(GODRAY_MIN_W, Math.ceil(win.innerWidth)));
-  frame.setAttribute("data-fm-godray", "loading");
   frame.addEventListener(
     "load",
     // A few frames for the shader's first draw before fading in.
     () => win.setTimeout(() => frame.setAttribute("data-fm-godray", "ready"), 120),
     { once: true },
   );
-  // srcdoc rather than a new data: URL: it shares the page's origin, so the
-  // self-hosted script loads like any other asset. It also takes precedence
-  // over the src Framer renders.
-  frame.setAttribute("srcdoc", src);
+  // Script inlined into a data: URL: no request when the frame loads, and the
+  // shader keeps an opaque origin so its WebGL work stays off the page's own
+  // main thread (a same-origin srcdoc frame hung the page).
+  frame.setAttribute("src", src);
+}
+
+/**
+ * 16 — testimonial cards: hover lift and a link to the YTJobs profile.
+ *
+ * The lift and blue glow reuse the process timeline cards' hover so the two
+ * sections feel the same. Applied to the inner card, never to the -container
+ * wrapper Framer animates in, so the entrance animation is untouched.
+ */
+const REVIEWS_URL = "https://ytjobs.co/talent/profile/526454?r=757";
+const REVIEW_CARD = '[data-framer-name="Testimonial content card"]';
+
+function patchReviewCards(doc: Document) {
+  doc.querySelectorAll<HTMLElement>(REVIEW_CARD).forEach((card) => {
+    if (card.getAttribute("data-fm-review-link") === "on") return;
+    card.setAttribute("data-fm-review-link", "on");
+    card.setAttribute("role", "link");
+    card.setAttribute("tabindex", "0");
+
+    const open = () =>
+      doc.defaultView?.open(REVIEWS_URL, "_blank", "noopener,noreferrer");
+    card.addEventListener("click", (event) => {
+      event.preventDefault();
+      open();
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      open();
+    });
+  });
+
+  if (doc.getElementById("fm-review-hover") || !doc.head) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-review-hover";
+  sheet.textContent = `
+[data-fm-review-link]{
+  cursor:pointer;
+  transition:transform .35s cubic-bezier(.22,1,.36,1),box-shadow .35s ease,filter .35s ease !important;
+}
+@media (hover:hover){
+  [data-fm-review-link]:hover{
+    transform:translateY(-6px) !important;
+    box-shadow:0 0 0 1px rgba(109,188,255,.72),0 0 28px rgba(0,100,255,.24),0 12px 34px rgba(0,0,0,.24) !important;
+    filter:brightness(1.06);
+  }
+}
+[data-fm-review-link]:focus-visible{
+  outline:2px solid rgba(109,188,255,.9);
+  outline-offset:3px;
+}`;
+  doc.head.appendChild(sheet);
+}
+
+/**
+ * 17 — let the portfolio button's glow show in full.
+ *
+ * "View More Work" glows (0 14px 38px on hover) right at the bottom of the
+ * Thumbnail Works section, which clips its overflow and whose bottom padding
+ * is barely as deep as the shadow — so the glow was cut off in a hard line,
+ * and the next section could paint over what was left. Clipping stays on the
+ * horizontal axis (the ticker scrolls wider than the page); vertically the
+ * glow may spill out, and the button sits above the following section.
+ */
+function installWorkButtonGlowFix(doc: Document) {
+  if (doc.getElementById("fm-work-glow") || !doc.head) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-work-glow";
+  sheet.textContent = `
+.framer-ZShEI .framer-1ccrsvh{
+  overflow-x:clip !important;
+  overflow-y:visible !important;
+}
+.framer-ZShEI .framer-14p5mbx-container{
+  z-index:2 !important;
+}`;
+  doc.head.appendChild(sheet);
 }
 
 function patchMirror(doc: Document) {
@@ -1324,6 +1429,8 @@ function patchMirror(doc: Document) {
   patchTestimonialCards(doc);
   addBourickReview(doc);
   patchTestimonialAvatars(doc);
+  patchReviewCards(doc);
+  installWorkButtonGlowFix(doc);
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
   installSeamlessButtonSweep(doc);
