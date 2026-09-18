@@ -1584,6 +1584,34 @@ ${WHITE_HOVER.split(", ").map((c) => `${c} .framer-text`).join(",")}{
   doc.head.appendChild(sheet);
 }
 
+/**
+ * 21 — About copy: readable word gaps and an on-brand signature.
+ *
+ * The paragraph is one inline-block span per word; Stack Sans Text's space is
+ * only ~0.23em (4.2px at 18px), so between those boxes the words read as run
+ * together. The signature line under the name was the only Inter Medium
+ * Italic on the site; it now uses Stack Sans Text like the paragraph.
+ */
+function installAboutTypography(doc: Document) {
+  if (doc.getElementById("fm-about-type") || !doc.head) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-about-type";
+  sheet.textContent = `
+.framer-ZShEI .framer-qllq3i p{
+  word-spacing:.14em;
+}
+.framer-ZShEI .framer-hbwn49 p{
+  --framer-font-family:"Stack Sans Text","Stack Sans Text Placeholder",sans-serif !important;
+  --framer-font-style:normal !important;
+  --framer-font-weight:500 !important;
+  font-family:"Stack Sans Text","Stack Sans Text Placeholder",sans-serif !important;
+  font-style:normal !important;
+  font-weight:500 !important;
+  letter-spacing:.01em;
+}`;
+  doc.head.appendChild(sheet);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   installStableGodray(doc);
@@ -1603,6 +1631,7 @@ function patchMirror(doc: Document) {
   patchTextGuideIcon(doc);
   installTextGlow(doc);
   installWhiteButtonHover(doc);
+  installAboutTypography(doc);
   installContactCardText(doc);
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
