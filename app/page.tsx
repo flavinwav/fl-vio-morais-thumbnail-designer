@@ -1506,41 +1506,44 @@ function installTextGlow(doc: Document) {
   text-wrap:balance;
 }
 
-/* "Tem um vídeo em mente?" chip: the flat white pill becomes the site's glass
-   (nav / language toggle), led by a pulsing play badge. */
-@keyframes fm-chip-pulse{
-  0%{box-shadow:0 0 0 0 rgba(64,140,255,.55),0 0 14px rgba(0,105,255,.55);}
-  70%{box-shadow:0 0 0 9px rgba(64,140,255,0),0 0 14px rgba(0,105,255,.55);}
-  100%{box-shadow:0 0 0 0 rgba(64,140,255,0),0 0 14px rgba(0,105,255,.55);}
+/* "Tem um vídeo em mente?" chip: the flat white pill becomes the site's dark
+   glass, sized like the hero's "Disponível agora" badge, led by a bare play
+   glyph that breathes. Only transform and opacity animate (compositor-only);
+   no backdrop blur, which would have to be recomputed every frame. */
+@keyframes fm-play-breathe{
+  0%,100%{transform:translateX(0) scale(.9);opacity:.7;}
+  50%{transform:translateX(1.5px) scale(1.06);opacity:1;}
 }
 .framer-ZShEI .framer-19x4q0q .framer-mo9liq{
-  --border-color:rgba(140,190,255,.32) !important;
-  background:linear-gradient(180deg,rgba(32,99,171,.42) 0%,rgba(32,99,171,0) 100%),rgba(4,10,22,.72) !important;
-  box-shadow:inset 0 1px 0 rgba(200,225,255,.14),0 10px 34px rgba(0,105,255,.22) !important;
-  backdrop-filter:blur(18px);
-  -webkit-backdrop-filter:blur(18px);
-  gap:10px !important;
-  padding:8px 18px 8px 8px !important;
+  --border-color:rgba(140,190,255,.3) !important;
+  background:linear-gradient(180deg,rgba(32,99,171,.4) 0%,rgba(32,99,171,0) 100%),rgba(4,10,22,.78) !important;
+  box-shadow:inset 0 1px 0 rgba(200,225,255,.12),0 6px 22px rgba(0,105,255,.18) !important;
+  gap:7px !important;
+  padding:8px 14px 8px 12px !important;
+  border-radius:999px !important;
 }
 .framer-ZShEI .framer-19x4q0q .framer-mo9liq::before{
   content:"";
   flex:none;
-  width:30px;
-  height:30px;
-  border-radius:50%;
-  background:url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 7.5v9l7.5-4.5z" fill="#fff"/></svg>')}") center/18px no-repeat,linear-gradient(135deg,#3d8bff 0%,#0a4fd1 100%);
-  animation:fm-chip-pulse 2.4s ease-out infinite;
+  width:10px;
+  height:10px;
+  background:url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M2 1.2v7.6L8.6 5z" fill="#6aa6ff"/></svg>')}") center/contain no-repeat;
+  filter:drop-shadow(0 0 3px rgba(64,140,255,.85));
+  will-change:transform,opacity;
+  animation:fm-play-breathe 2.8s ease-in-out infinite;
 }
 .framer-ZShEI .framer-19x4q0q .framer-mo9liq p{
   --framer-text-color:rgba(233,242,255,.94) !important;
+  --framer-font-size:13px !important;
+  --framer-line-height:1em !important;
 }
 .framer-ZShEI .framer-19x4q0q .framer-mo9liq p > span{
   --framer-text-color:rgb(106,166,255) !important;
-  text-shadow:0 0 14px rgba(0,105,255,.55);
+  text-shadow:0 0 10px rgba(0,105,255,.55);
 }
 @media (prefers-reduced-motion:reduce){
-  .framer-ZShEI .framer-19x4q0q .framer-mo9liq::before{animation:none;}
-}`;
+  .framer-ZShEI .framer-19x4q0q .framer-mo9liq::before{animation:none;opacity:1;}
+}}`;
   doc.head.appendChild(sheet);
 }
 
