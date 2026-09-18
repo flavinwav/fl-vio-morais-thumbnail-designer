@@ -1547,6 +1547,43 @@ function installTextGlow(doc: Document) {
   doc.head.appendChild(sheet);
 }
 
+/**
+ * 20 — "Contatos" (nav) and "Enviar" (form) hover like "Contrate Agora".
+ *
+ * Framer gives the hero CTA a hover variant that turns it white with dark
+ * blue text (#062b78), a near-white border and a lower, wider glow
+ * (0 10px 38px). The nav CTA only scaled up and the submit button had no
+ * hover of its own; both now take that exact white state, eased in.
+ */
+const WHITE_HOVER = ".framer-8ttqe7, .framer-uNypv";
+
+function installWhiteButtonHover(doc: Document) {
+  if (doc.getElementById("fm-white-hover") || !doc.head) return;
+  const hovered = WHITE_HOVER.split(", ").map((c) => `${c}:hover`);
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-white-hover";
+  sheet.textContent = `
+${WHITE_HOVER}{
+  transition:background-color .3s ease,box-shadow .3s ease !important;
+}
+${WHITE_HOVER.split(", ").map((c) => `${c} .framer-text`).join(",")}{
+  transition:color .3s ease;
+}
+@media (hover:hover){
+  ${hovered.join(",")}{
+    --border-color:rgba(255,255,255,.96) !important;
+    background:#fff !important;
+    box-shadow:0 10px 38px 0 rgba(80,177,255,.42) !important;
+    transform:none !important;
+  }
+  ${hovered.map((c) => `${c} .framer-text`).join(",")}{
+    --framer-text-color:rgb(6,43,120) !important;
+    color:rgb(6,43,120) !important;
+  }
+}`;
+  doc.head.appendChild(sheet);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   installStableGodray(doc);
@@ -1565,6 +1602,7 @@ function patchMirror(doc: Document) {
   installWorkButtonGlowFix(doc);
   patchTextGuideIcon(doc);
   installTextGlow(doc);
+  installWhiteButtonHover(doc);
   installContactCardText(doc);
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);

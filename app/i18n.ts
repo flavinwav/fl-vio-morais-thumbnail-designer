@@ -52,9 +52,14 @@ export const BOURICK_QUOTE_EN = '"Very creative and versatile. You can trust him
  * equivalent words.
  */
 export const EN: Record<string, string> = {
-  // Hero
+  // Hero — five word spans: three on the first line, two blue on the second
+  // (the sixth word shares the last span).
+  "Elevate Your Reach. Grow Faster.": "Grab Every Eye. Build Your Brand.",
   "Conversion-focused visuals crafted for creators, launches, and brands that need attention fast.":
-    "Cinematic thumbnails strategically designed to grab attention and build your channel's brand.",
+    "Cinematic thumbnails strategically designed to grab attention and elevate your channel.",
+
+  // Work — one span of four words, then the blue one.
+  "Works That Stop The Scroll": "Visual Identity That Builds Trust",
 
   // Process — the proposal's workflow: briefing, contract, text guide,
   // creation, alignment, delivery.
@@ -80,6 +85,8 @@ export const EN: Record<string, string> = {
     "The finished project arrives via Google Drive, ready to publish.",
 
   // About
+  "Behind the work": "Strategy in every thumb",
+  "Thumbnail & visual designer": "YouTube thumbnail designer",
   "Thumbnail-focused visual direction": "3+ years delivering creative solutions",
   "Hi, I'm Flávio Morais, Thumbnail Graphic Designer for YouTube":
     "Hi, I'm Flávio Morais, Thumbnail Designer specialized in YouTube",
@@ -97,6 +104,9 @@ export const EN: Record<string, string> = {
   "A short brief, your deadline, brand assets, and any examples that capture the direction are enough to get started.":
     "The filled-in briefing and all the materials (texts and images). A digital contract then formalizes the details, deadlines, and deliveries.",
 
+  // Footer
+  "Your next viral visual starts here.": "Turn your ideas into impact.",
+
   // Contact — 4 words on the first line, 1 white + 3 blue on the second.
   "Let's make the next click impossible to ignore.": "Turn your idea into a thumb nobody skips.",
   "Send a short brief below replies usually land within 24 hours.":
@@ -110,9 +120,9 @@ export const EN: Record<string, string> = {
 export const PT: Record<string, string> = {
   // Hero — word counts match the source so the highlighted words stay blue.
   "Available now": "Disponível agora",
-  "Elevate Your Reach. Grow Faster.": "Amplie Seu Alcance. Cresça Rápido.",
+  "Elevate Your Reach. Grow Faster.": "Prenda Cada Olhar. Construa Sua Marca.",
   "Conversion-focused visuals crafted for creators, launches, and brands that need attention fast.":
-    "Thumbnails cinematográficas pensadas estrategicamente para prender a atenção e fortalecer sua marca.",
+    "Thumbnails cinematográficas pensadas estrategicamente para prender a atenção e valorizar seu canal.",
   "Contract Now": "Contrate Agora",
   "See Works": "Ver Trabalhos",
   "Scroll down": "Role para baixo",
@@ -120,7 +130,7 @@ export const PT: Record<string, string> = {
 
   // Work
   "Thumbnail Portfolio": "Portfólio de Thumbnails",
-  "Works That Stop The Scroll": "Trabalhos Que Prendem a Atenção",
+  "Works That Stop The Scroll": "Identidade Visual Que Gera Confiança",
   "View More Work": "Ver Mais Trabalhos",
 
   // Process
@@ -148,7 +158,7 @@ export const PT: Record<string, string> = {
 
   // About
   "About Me": "Sobre Mim",
-  "Behind the work": "Por trás do trabalho",
+  "Behind the work": "Estratégia em cada thumb",
   "Thumbnail-focused visual direction": "3+ anos entregando soluções criativas",
   // Nine words, like the source: the last one sits on its own line.
   "Hi, I'm Flávio Morais, Thumbnail Graphic Designer for YouTube":
@@ -156,7 +166,7 @@ export const PT: Record<string, string> = {
   // Word 3 is set bold and words 5–6 blue in the source.
   "I create high-quality compositions strategically designed to capture attention. I have proven experience in the gaming, finance, and technology sectors, creating narratives that drive real results.":
     "Crio composições cinematográficas e estrategicamente pensadas para prender a atenção. Tenho experiência validada nos nichos de games, finanças e tecnologia, com narrativas que geram resultados reais.",
-  "Thumbnail & visual designer": "Designer de thumbnails e visual",
+  "Thumbnail & visual designer": "Designer de thumbnails para YouTube",
 
   // Testimonials
   Testimonials: "Depoimentos",
@@ -221,7 +231,7 @@ export const PT: Record<string, string> = {
   "Write here…": "Escreva aqui…",
 
   // Footer & nav
-  "Your next viral visual starts here.": "Seu próximo visual viral começa aqui.",
+  "Your next viral visual starts here.": "Transforme suas ideias em impacto.",
   "© 2026 All Rights Reserved": "© 2026 Todos os direitos reservados",
   Navigation: "Navegação",
   Work: "Trabalhos",
