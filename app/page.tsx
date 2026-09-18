@@ -1481,9 +1481,9 @@ function replaceWithDocIcon(doc: Document, icon: SVGSVGElement) {
  * The export's "glow" was a fixed 560×190 blue ellipse painted into the hero's
  * background, placed at a percentage of the hero's height: it never matched
  * the headline's width and drifted as the viewport changed. The ellipse goes;
- * the headline itself glows instead, in the god-ray's own blues (its shader
- * colours are rgb(0,105,255) and rgb(179,215,255)), so text and rays read as
- * one light. The contact heading gets the same glow on its blue words.
+ * the headline's blue words glow instead, in the god-ray's own blues (its
+ * shader colours are rgb(0,105,255) and rgb(179,215,255)), so text and rays
+ * read as one light. The contact heading's blue words glow the same way.
  */
 const GODRAY_GLOW =
   "0 0 18px rgba(64,140,255,.55),0 0 46px rgba(0,105,255,.38),0 0 90px rgba(0,105,255,.22)";
@@ -1496,7 +1496,7 @@ function installTextGlow(doc: Document) {
 .framer-ZShEI .framer-fdvaze{
   background:#030508 !important;
 }
-.framer-ZShEI .framer-tseaf4 h1{
+.framer-ZShEI .framer-tseaf4 h1 > span:last-child{
   text-shadow:${GODRAY_GLOW};
 }
 .framer-ZShEI .framer-q09i75 h3 > span:last-child{
@@ -1504,6 +1504,42 @@ function installTextGlow(doc: Document) {
 }
 .framer-ZShEI .framer-q09i75 h3{
   text-wrap:balance;
+}
+
+/* "Tem um vídeo em mente?" chip: the flat white pill becomes the site's glass
+   (nav / language toggle), led by a pulsing play badge. */
+@keyframes fm-chip-pulse{
+  0%{box-shadow:0 0 0 0 rgba(64,140,255,.55),0 0 14px rgba(0,105,255,.55);}
+  70%{box-shadow:0 0 0 9px rgba(64,140,255,0),0 0 14px rgba(0,105,255,.55);}
+  100%{box-shadow:0 0 0 0 rgba(64,140,255,0),0 0 14px rgba(0,105,255,.55);}
+}
+.framer-ZShEI .framer-19x4q0q .framer-mo9liq{
+  --border-color:rgba(140,190,255,.32) !important;
+  background:linear-gradient(180deg,rgba(32,99,171,.42) 0%,rgba(32,99,171,0) 100%),rgba(4,10,22,.72) !important;
+  box-shadow:inset 0 1px 0 rgba(200,225,255,.14),0 10px 34px rgba(0,105,255,.22) !important;
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  gap:10px !important;
+  padding:8px 18px 8px 8px !important;
+}
+.framer-ZShEI .framer-19x4q0q .framer-mo9liq::before{
+  content:"";
+  flex:none;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  background:url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 7.5v9l7.5-4.5z" fill="#fff"/></svg>')}") center/18px no-repeat,linear-gradient(135deg,#3d8bff 0%,#0a4fd1 100%);
+  animation:fm-chip-pulse 2.4s ease-out infinite;
+}
+.framer-ZShEI .framer-19x4q0q .framer-mo9liq p{
+  --framer-text-color:rgba(233,242,255,.94) !important;
+}
+.framer-ZShEI .framer-19x4q0q .framer-mo9liq p > span{
+  --framer-text-color:rgb(106,166,255) !important;
+  text-shadow:0 0 14px rgba(0,105,255,.55);
+}
+@media (prefers-reduced-motion:reduce){
+  .framer-ZShEI .framer-19x4q0q .framer-mo9liq::before{animation:none;}
 }`;
   doc.head.appendChild(sheet);
 }
