@@ -77,7 +77,7 @@ export const EN: Record<string, string> = {
     "A shared document centralizes your channel's references and ideas for total consistency.",
   "Design & Optimize": "Creation",
   "Composition, contrast, and hierarchy are tuned for speed.":
-    "I develop the concept with cinematic composition, contrast, and hierarchy built to hold attention.",
+    "I develop the concept with cinematic composition, contrast, and hierarchy that guide the eye straight to your message.",
   "Concept Preview": "Alignment",
   "A clear direction is shared before the final polish begins.":
     "You receive the concept for alignment; we review its visual impact and adjust if needed.",
@@ -91,7 +91,7 @@ export const EN: Record<string, string> = {
   "Hi, I'm Flávio Morais, Thumbnail Graphic Designer for YouTube":
     "Hi, I'm Flávio Morais, Thumbnail Designer specialized in YouTube",
   "I create high-quality compositions strategically designed to capture attention. I have proven experience in the gaming, finance, and technology sectors, creating narratives that drive real results.":
-    "I create cinematic compositions strategically designed to capture attention. I have validated experience in the gaming, finance, and technology niches, crafting narratives that drive real results.",
+    "I create cinematic compositions strategically designed to reach your target audience. I have validated experience in gaming, finance, and technology niches, crafting narratives that drive real results.",
 
   // FAQ
   "How fast can a visual be delivered?": "How do deadlines work?",
@@ -108,7 +108,7 @@ export const EN: Record<string, string> = {
   "Your next viral visual starts here.": "Turn your ideas into impact.",
 
   // Contact — 4 words on the first line, 1 white + 3 blue on the second.
-  "Let's make the next click impossible to ignore.": "Turn your idea into a thumb nobody skips.",
+  "Let's make the next click impossible to ignore.": "Your idea deserves a visual to match.",
   "Send a short brief below replies usually land within 24 hours.":
     "Send a short message below and I'll reply with the briefing to get started.",
 };
@@ -148,7 +148,7 @@ export const PT: Record<string, string> = {
     "Um documento compartilhado centraliza as referências e ideias do seu canal, garantindo total consistência.",
   "Design & Optimize": "Criação",
   "Composition, contrast, and hierarchy are tuned for speed.":
-    "Desenvolvo o conceito com composição cinematográfica, contraste e hierarquia para prender a atenção.",
+    "Desenvolvo o conceito com composição cinematográfica, contraste e hierarquia que guiam o olhar direto para a sua mensagem.",
   "Concept Preview": "Alinhamento",
   "A clear direction is shared before the final polish begins.":
     "Te envio o conceito para alinhamento, avaliamos o impacto visual e ajustamos se for necessário.",
@@ -165,7 +165,7 @@ export const PT: Record<string, string> = {
     "Sou Flávio Morais, Designer especializado em Thumbnails para YouTube",
   // Word 3 is set bold and words 5–6 blue in the source.
   "I create high-quality compositions strategically designed to capture attention. I have proven experience in the gaming, finance, and technology sectors, creating narratives that drive real results.":
-    "Crio composições cinematográficas e estrategicamente pensadas para prender a atenção. Tenho experiência validada nos nichos de games, finanças e tecnologia, com narrativas que geram resultados reais.",
+    "Crio composições cinematográficas e estrategicamente pensadas para alcançar seu público-alvo. Tenho experiência validada nos nichos de games, finanças e tecnologia, com narrativas que geram resultados reais.",
   "Thumbnail & visual designer": "Designer de thumbnails para YouTube",
 
   // Testimonials
@@ -214,7 +214,7 @@ export const PT: Record<string, string> = {
   "Have a video in mind?": "Tem um vídeo em mente?",
   // 4 words on the first line, 1 white + 3 blue on the second.
   "Let's make the next click impossible to ignore.":
-    "Sua ideia vira thumb que prende a atenção.",
+    "Sua ideia merece um visual à altura.",
   "Send a short brief below replies usually land within 24 hours.":
     "Envie uma mensagem abaixo e eu te respondo com o briefing para começarmos.",
   "Hit me up wherever you’re most comfortable:":
@@ -354,7 +354,15 @@ function collapseEmptyWordGaps(block: Element) {
       if (gap.data.trim()) return;
       spaceOriginals.set(gap, gap.data);
     }
-    write(gap, span.textContent ? (spaceOriginals.get(gap) ?? " ") : "");
+    // Only a genuine double: the empty span must also have a space before it.
+    // After a styled span (`<span blue>…</span><span></span> <span>to`) the
+    // gap after the empty span is the only space between the words.
+    const prev = span.previousSibling;
+    const doubled =
+      prev?.nodeType === 3 &&
+      !((spaceOriginals.get(prev as Text) ?? prev.textContent ?? "").trim()) &&
+      (spaceOriginals.get(prev as Text) ?? prev.textContent ?? "") !== "";
+    write(gap, span.textContent || !doubled ? (spaceOriginals.get(gap) ?? " ") : "");
   });
 }
 
