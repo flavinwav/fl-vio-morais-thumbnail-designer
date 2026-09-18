@@ -1415,6 +1415,66 @@ function installWorkButtonGlowFix(doc: Document) {
   doc.head.appendChild(sheet);
 }
 
+/**
+ * 18 — the contact cards read alike: a grey label over a black value.
+ *
+ * The export gives only the email card's label its grey; the Instagram and
+ * Quick chat (WhatsApp) labels fell back to black, so the three cards looked
+ * like different components. Suffix selectors also cover the names
+ * `patchQuickChatCard` swaps in.
+ */
+function installContactCardText(doc: Document) {
+  if (doc.getElementById("fm-contact-card-text") || !doc.head) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-contact-card-text";
+  sheet.textContent = `
+[data-framer-name$="Contact Card"] [data-framer-name$=" Label"] .framer-text{
+  --framer-text-color:rgba(0, 0, 0, 0.58) !important;
+}
+[data-framer-name$="Contact Card"] [data-framer-name$=" Value"] .framer-text{
+  --framer-text-color:rgb(0, 0, 0) !important;
+}`;
+  doc.head.appendChild(sheet);
+}
+
+/**
+ * 18 — the third process step is now the "text guide" (a shared document), so
+ * its target icon becomes a document. Drawn with the same stroke variables the
+ * export's icon symbols use, so colour and weight match the other five.
+ */
+const DOC_ICON_PATHS = [
+  "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z",
+  "M14 3v5h5",
+  "M9 13h6",
+  "M9 17h4",
+];
+
+function patchTextGuideIcon(doc: Document) {
+  // Every breakpoint variant renders its own copy of the card.
+  doc
+    .querySelectorAll<SVGSVGElement>(
+      '[data-framer-name="Process Card — Analyze"] svg[data-framer-name="Process Icon"]',
+    )
+    .forEach((icon) => replaceWithDocIcon(doc, icon));
+}
+
+function replaceWithDocIcon(doc: Document, icon: SVGSVGElement) {
+  if (icon.getAttribute("data-fm-icon") === "doc") return;
+  icon.setAttribute("data-fm-icon", "doc");
+  icon.replaceChildren(
+    ...DOC_ICON_PATHS.map((d) => {
+      const path = doc.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("fill", "transparent");
+      path.setAttribute("stroke", "var(--21h8s6, rgb(0, 0, 0))");
+      path.setAttribute("stroke-width", "var(--pgex8v, 1.5)");
+      path.setAttribute("stroke-linecap", "round");
+      path.setAttribute("stroke-linejoin", "round");
+      return path;
+    }),
+  );
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   installStableGodray(doc);
@@ -1431,6 +1491,8 @@ function patchMirror(doc: Document) {
   patchTestimonialAvatars(doc);
   patchReviewCards(doc);
   installWorkButtonGlowFix(doc);
+  patchTextGuideIcon(doc);
+  installContactCardText(doc);
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
   installSeamlessButtonSweep(doc);

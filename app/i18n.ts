@@ -45,6 +45,64 @@ const UI: Record<string, Record<Lang, string>> = {
 export const BOURICK_QUOTE_EN = '"Very creative and versatile. You can trust him!!"';
 
 /**
+ * Copy aligned with the commercial proposal (PROPOSTA THUMB): the export's
+ * English is replaced where the proposal says it differently. Same keys as PT
+ * — the export's source text. Word counts match the source wherever words are
+ * individually highlighted or animated, so the emphasis lands on the
+ * equivalent words.
+ */
+export const EN: Record<string, string> = {
+  // Hero
+  "Conversion-focused visuals crafted for creators, launches, and brands that need attention fast.":
+    "Cinematic thumbnails strategically designed to grab attention and build your channel's brand.",
+
+  // Process — the proposal's workflow: briefing, contract, text guide,
+  // creation, alignment, delivery.
+  "Our Thumbnail Desgin Process": "My Proven Work Process",
+  "A simple, proven workflow to move from first message to ready-to-post visuals.":
+    "From the first briefing to thumbnails ready to publish, every step is clear and organized.",
+  "Reach Out": "Briefing",
+  "Send the goal, deadline, and any examples you like.":
+    "I send you a form about your channel, so I understand your audience and goals.",
+  Approval: "Contract",
+  "Once approved, the delivery window is locked in.":
+    "A digital contract sets out every project detail, with deadlines and deliveries.",
+  "Angle Check": "Text Guide",
+  "The concept is shaped around audience, promise, and curiosity.":
+    "A shared document centralizes your channel's references and ideas for total consistency.",
+  "Design & Optimize": "Creation",
+  "Composition, contrast, and hierarchy are tuned for speed.":
+    "I develop the concept with cinematic composition, contrast, and hierarchy built to hold attention.",
+  "Concept Preview": "Alignment",
+  "A clear direction is shared before the final polish begins.":
+    "You receive the concept for alignment; we review its visual impact and adjust if needed.",
+  "Final files arrive ready to upload, test, or publish.":
+    "The finished project arrives via Google Drive, ready to publish.",
+
+  // About
+  "Thumbnail-focused visual direction": "3+ years delivering creative solutions",
+  "Hi, I'm Flávio Morais, Thumbnail Graphic Designer for YouTube":
+    "Hi, I'm Flávio Morais, Thumbnail Designer specialized in YouTube",
+  "I create high-quality compositions strategically designed to capture attention. I have proven experience in the gaming, finance, and technology sectors, creating narratives that drive real results.":
+    "I create cinematic compositions strategically designed to capture attention. I have validated experience in the gaming, finance, and technology niches, crafting narratives that drive real results.",
+
+  // FAQ
+  "How fast can a visual be delivered?": "How do deadlines work?",
+  "Most single visuals can be delivered within 24–48 hours, depending on complexity and feedback speed.":
+    "Deadlines follow your monthly plan: 4, 8, or 12 thumbnails a month, with one to three deliveries a week. A single test thumbnail is delivered in 2 business days. The clock starts once payment clears, the briefing is filled in, and all materials (texts and images) are sent.",
+  "Yes. Share your brand assets, references, and the visual direction you want to protect, and the work will be shaped to fit.":
+    "Yes. The briefing and a shared text guide centralize your channel's references and ideas, so every thumbnail stays consistent with your brand.",
+  "Every project includes a focused revision round so the final visual feels resolved, aligned, and ready to publish.":
+    "Yes. Every thumbnail includes two free revisions, and spelling corrections are always free.",
+  "A short brief, your deadline, brand assets, and any examples that capture the direction are enough to get started.":
+    "The filled-in briefing and all the materials (texts and images). A digital contract then formalizes the details, deadlines, and deliveries.",
+
+  // Contact
+  "Send a short brief below replies usually land within 24 hours.":
+    "Send a short message below and I'll reply with the briefing to get started.",
+};
+
+/**
  * English source phrase → Portuguese. Keys are the whitespace-normalised text
  * of a whole text block, so word-split headings translate as one phrase.
  */
@@ -53,7 +111,7 @@ export const PT: Record<string, string> = {
   "Available now": "Disponível agora",
   "Elevate Your Reach. Grow Faster.": "Amplie Seu Alcance. Cresça Rápido.",
   "Conversion-focused visuals crafted for creators, launches, and brands that need attention fast.":
-    "Visuais focados em conversão, feitos para criadores, lançamentos e marcas que precisam de atenção rápido.",
+    "Thumbnails cinematográficas pensadas estrategicamente para prender a atenção e fortalecer sua marca.",
   "Contract Now": "Contrate Agora",
   "See Works": "Ver Trabalhos",
   "Scroll down": "Role para baixo",
@@ -65,36 +123,38 @@ export const PT: Record<string, string> = {
   "View More Work": "Ver Mais Trabalhos",
 
   // Process
-  "Our Thumbnail Desgin Process": "Nosso Processo de Design",
+  "Our Thumbnail Desgin Process": "Meu Processo de Trabalho",
   "A simple, proven workflow to move from first message to ready-to-post visuals.":
-    "Um fluxo simples e comprovado, da primeira mensagem aos visuais prontos para publicar.",
-  "Reach Out": "Entre em Contato",
+    "Do primeiro briefing à thumbnail pronta para publicar, cada etapa é clara e organizada.",
+  "Reach Out": "Briefing",
   "Send the goal, deadline, and any examples you like.":
-    "Envie o objetivo, o prazo e exemplos de que você gosta.",
-  Approval: "Aprovação",
+    "Te envio um formulário sobre o seu canal para compreender seu público e objetivos.",
+  Approval: "Contrato",
   "Once approved, the delivery window is locked in.":
-    "Após a aprovação, o prazo de entrega fica garantido.",
-  "Angle Check": "Definição do Ângulo",
+    "Envio um contrato digital com todos os detalhes do projeto, prazos e entregas.",
+  "Angle Check": "Guia Textual",
   "The concept is shaped around audience, promise, and curiosity.":
-    "O conceito é construído em torno do público, da promessa e da curiosidade.",
-  "Design & Optimize": "Design e Otimização",
+    "Um documento compartilhado centraliza as referências e ideias do seu canal, garantindo total consistência.",
+  "Design & Optimize": "Criação",
   "Composition, contrast, and hierarchy are tuned for speed.":
-    "Composição, contraste e hierarquia ajustados para leitura rápida.",
-  "Concept Preview": "Prévia do Conceito",
+    "Desenvolvo o conceito com composição cinematográfica, contraste e hierarquia para prender a atenção.",
+  "Concept Preview": "Alinhamento",
   "A clear direction is shared before the final polish begins.":
-    "Uma direção clara é apresentada antes do acabamento final.",
+    "Te envio o conceito para alinhamento, avaliamos o impacto visual e ajustamos se for necessário.",
   Delivery: "Entrega",
   "Final files arrive ready to upload, test, or publish.":
-    "Os arquivos finais chegam prontos para subir, testar ou publicar.",
+    "Entrego o projeto finalizado via Google Drive, pronto para publicação.",
 
   // About
   "About Me": "Sobre Mim",
   "Behind the work": "Por trás do trabalho",
-  "Thumbnail-focused visual direction": "Direção visual focada em thumbnails",
+  "Thumbnail-focused visual direction": "3+ anos entregando soluções criativas",
+  // Nine words, like the source: the last one sits on its own line.
   "Hi, I'm Flávio Morais, Thumbnail Graphic Designer for YouTube":
-    "Olá, sou Flávio Morais, Designer Gráfico de Thumbnails para YouTube",
+    "Sou Flávio Morais, Designer especializado em Thumbnails para YouTube",
+  // Word 3 is set bold and words 5–6 blue in the source.
   "I create high-quality compositions strategically designed to capture attention. I have proven experience in the gaming, finance, and technology sectors, creating narratives that drive real results.":
-    "Crio artes premium, composições estrategicamente pensadas para capturar atenção. Tenho experiência comprovada nos setores de games, finanças e tecnologia, criando narrativas que geram resultados reais.",
+    "Crio composições cinematográficas e estrategicamente pensadas para prender a atenção. Tenho experiência validada nos nichos de games, finanças e tecnologia, com narrativas que geram resultados reais.",
   "Thumbnail & visual designer": "Designer de thumbnails e visual",
 
   // Testimonials
@@ -123,7 +183,7 @@ export const PT: Record<string, string> = {
   "Frequently Asked Questions": "Perguntas Mais Frequentes",
   "A few quick answers before the first message.":
     "Algumas respostas rápidas antes da primeira mensagem.",
-  "How fast can a visual be delivered?": "Em quanto tempo um visual pode ser entregue?",
+  "How fast can a visual be delivered?": "Como funcionam os prazos?",
   "Can the style match existing branding?":
     "O estilo pode seguir a identidade visual existente?",
   "Are revisions included?": "As revisões estão incluídas?",
@@ -131,20 +191,20 @@ export const PT: Record<string, string> = {
   // Answers only enter the DOM when an accordion opens; the patch pass re-runs
   // on that mutation, so they translate as they appear.
   "Most single visuals can be delivered within 24–48 hours, depending on complexity and feedback speed.":
-    "A maioria dos visuais avulsos pode ser entregue em 24–48 horas, dependendo da complexidade e da agilidade no feedback.",
+    "Os prazos seguem o seu plano mensal: 4, 8 ou 12 thumbnails por mês, com uma a três entregas por semana. A thumb teste avulsa é entregue em 2 dias úteis. O prazo começa após a compensação do pagamento, a devolução do briefing preenchido e o envio de todos os materiais (textos e imagens).",
   "Yes. Share your brand assets, references, and the visual direction you want to protect, and the work will be shaped to fit.":
-    "Sim. Envie os materiais da sua marca, referências e a direção visual que você quer manter, e o trabalho será adaptado a isso.",
+    "Sim. O briefing e um guia textual compartilhado centralizam as referências e ideias do seu canal, garantindo que cada thumbnail mantenha a consistência da sua marca.",
   "Every project includes a focused revision round so the final visual feels resolved, aligned, and ready to publish.":
-    "Todo projeto inclui uma rodada de revisão focada, para que o visual final fique resolvido, alinhado e pronto para publicar.",
+    "Sim. Cada thumbnail inclui duas alterações gratuitas, e correções ortográficas são sempre isentas.",
   "A short brief, your deadline, brand assets, and any examples that capture the direction are enough to get started.":
-    "Um breve resumo, seu prazo, os materiais da marca e exemplos que mostrem a direção desejada já são suficientes para começar.",
+    "O briefing preenchido e todos os materiais (textos e imagens). Em seguida, um contrato digital formaliza os detalhes, prazos e entregas.",
 
   // Contact
   "Have a video in mind?": "Tem um vídeo em mente?",
   "Let's make the next click impossible to ignore.":
     "Vamos tornar o próximo clique impossível de ignorar.",
   "Send a short brief below replies usually land within 24 hours.":
-    "Envie um breve resumo abaixo — as respostas costumam chegar em até 24 horas.",
+    "Envie uma mensagem abaixo e eu te respondo com o briefing para começarmos.",
   "Hit me up wherever you’re most comfortable:":
     "Fale comigo onde for mais confortável para você:",
   "Send an email": "Envie um e-mail",
@@ -167,7 +227,7 @@ export const PT: Record<string, string> = {
   About: "Sobre",
   Socials: "Redes Sociais",
   // The nav CTA has a fixed width; keep it about as long as "Let’s Talk".
-  "Let’s Talk": "Fale Comigo",
+  "Let’s Talk": "Contatos",
 };
 
 function safeStorage(win: Window): Storage | null {
@@ -265,6 +325,8 @@ function distribute(leaves: Text[], translated: string) {
 const BLOCK = '[data-framer-component-type="RichTextContainer"]';
 
 function translateBlocks(doc: Document, lang: Lang) {
+  // English has its own table too: the export's copy, rewritten in places.
+  const table = lang === "pt" ? PT : EN;
   const blocks = Array.from(doc.querySelectorAll<HTMLElement>(BLOCK)).filter(
     (el) => !el.querySelector(BLOCK),
   );
@@ -275,13 +337,8 @@ function translateBlocks(doc: Document, lang: Lang) {
     if (!leaves.length) continue;
     leaves.forEach((leaf) => covered.add(leaf));
 
-    if (lang === "en") {
-      leaves.forEach((leaf) => write(leaf, originals.get(leaf) ?? leaf.data));
-      continue;
-    }
-
     const phrase = normalise(leaves.map((leaf) => originals.get(leaf)).join(" "));
-    const whole = PT[phrase];
+    const whole = table[phrase];
     if (whole !== undefined) {
       if (leaves.length === 1) {
         write(leaves[0], withEdges(originals.get(leaves[0]) ?? "", whole));
@@ -293,7 +350,7 @@ function translateBlocks(doc: Document, lang: Lang) {
     // No phrase entry: fall back to translating each piece on its own.
     for (const leaf of leaves) {
       const original = originals.get(leaf) ?? "";
-      const piece = PT[normalise(original)];
+      const piece = table[normalise(original)];
       write(leaf, piece === undefined ? original : withEdges(original, piece));
     }
   }
@@ -303,7 +360,7 @@ function translateBlocks(doc: Document, lang: Lang) {
     for (const leaf of textLeaves(doc.body)) {
       if (covered.has(leaf)) continue;
       const original = originals.get(leaf) ?? "";
-      const piece = lang === "pt" ? PT[normalise(original)] : undefined;
+      const piece = table[normalise(original)];
       write(leaf, piece === undefined ? original : withEdges(original, piece));
     }
   }
@@ -313,7 +370,7 @@ function translateBlocks(doc: Document, lang: Lang) {
       placeholderOriginals.set(field, field.getAttribute("placeholder") ?? "");
     }
     const original = placeholderOriginals.get(field) ?? "";
-    const next = lang === "pt" ? PT[normalise(original)] ?? original : original;
+    const next = table[normalise(original)] ?? original;
     if (field.getAttribute("placeholder") !== next) {
       field.setAttribute("placeholder", next);
     }
