@@ -97,7 +97,8 @@ export const EN: Record<string, string> = {
   "A short brief, your deadline, brand assets, and any examples that capture the direction are enough to get started.":
     "The filled-in briefing and all the materials (texts and images). A digital contract then formalizes the details, deadlines, and deliveries.",
 
-  // Contact
+  // Contact — 4 words on the first line, 1 white + 3 blue on the second.
+  "Let's make the next click impossible to ignore.": "Turn your idea into a thumb nobody skips.",
   "Send a short brief below replies usually land within 24 hours.":
     "Send a short message below and I'll reply with the briefing to get started.",
 };
@@ -201,8 +202,9 @@ export const PT: Record<string, string> = {
 
   // Contact
   "Have a video in mind?": "Tem um vídeo em mente?",
+  // 4 words on the first line, 1 white + 3 blue on the second.
   "Let's make the next click impossible to ignore.":
-    "Vamos tornar o próximo clique impossível de ignorar.",
+    "Sua ideia vira thumb que prende a atenção.",
   "Send a short brief below replies usually land within 24 hours.":
     "Envie uma mensagem abaixo e eu te respondo com o briefing para começarmos.",
   "Hit me up wherever you’re most comfortable:":
@@ -324,6 +326,28 @@ function distribute(leaves: Text[], translated: string) {
 
 const BLOCK = '[data-framer-component-type="RichTextContainer"]';
 
+const spaceOriginals = new WeakMap<Text, string>();
+
+/**
+ * Word-animated text is one span per word, separated by space text nodes, in
+ * a `white-space:pre-wrap` block — so spaces never collapse. An empty word
+ * span (the export has a few, and shorter copy leaves some unused) therefore
+ * shows as a double space. The space after an empty span is blanked, and
+ * restored when the span has text again.
+ */
+function collapseEmptyWordGaps(block: Element) {
+  block.querySelectorAll("span").forEach((span) => {
+    const next = span.nextSibling;
+    if (!next || next.nodeType !== 3) return;
+    const gap = next as Text;
+    if (!spaceOriginals.has(gap)) {
+      if (gap.data.trim()) return;
+      spaceOriginals.set(gap, gap.data);
+    }
+    write(gap, span.textContent ? (spaceOriginals.get(gap) ?? " ") : "");
+  });
+}
+
 function translateBlocks(doc: Document, lang: Lang) {
   // English has its own table too: the export's copy, rewritten in places.
   const table = lang === "pt" ? PT : EN;
@@ -354,6 +378,8 @@ function translateBlocks(doc: Document, lang: Lang) {
       write(leaf, piece === undefined ? original : withEdges(original, piece));
     }
   }
+
+  blocks.forEach(collapseEmptyWordGaps);
 
   // Text outside Framer's rich-text blocks (buttons, labels, patch output).
   if (doc.body) {

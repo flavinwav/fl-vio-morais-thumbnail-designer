@@ -1475,6 +1475,39 @@ function replaceWithDocIcon(doc: Document, icon: SVGSVGElement) {
   );
 }
 
+/**
+ * 19 — the hero glow belongs to the text.
+ *
+ * The export's "glow" was a fixed 560×190 blue ellipse painted into the hero's
+ * background, placed at a percentage of the hero's height: it never matched
+ * the headline's width and drifted as the viewport changed. The ellipse goes;
+ * the headline itself glows instead, in the god-ray's own blues (its shader
+ * colours are rgb(0,105,255) and rgb(179,215,255)), so text and rays read as
+ * one light. The contact heading gets the same glow on its blue words.
+ */
+const GODRAY_GLOW =
+  "0 0 18px rgba(64,140,255,.55),0 0 46px rgba(0,105,255,.38),0 0 90px rgba(0,105,255,.22)";
+
+function installTextGlow(doc: Document) {
+  if (doc.getElementById("fm-text-glow") || !doc.head) return;
+  const sheet = doc.createElement("style");
+  sheet.id = "fm-text-glow";
+  sheet.textContent = `
+.framer-ZShEI .framer-fdvaze{
+  background:#030508 !important;
+}
+.framer-ZShEI .framer-tseaf4 h1{
+  text-shadow:${GODRAY_GLOW};
+}
+.framer-ZShEI .framer-q09i75 h3 > span:last-child{
+  text-shadow:0 0 22px rgba(64,140,255,.45),0 0 60px rgba(0,105,255,.25);
+}
+.framer-ZShEI .framer-q09i75 h3{
+  text-wrap:balance;
+}`;
+  doc.head.appendChild(sheet);
+}
+
 function patchMirror(doc: Document) {
   hideFramerBadge(doc);
   installStableGodray(doc);
@@ -1492,6 +1525,7 @@ function patchMirror(doc: Document) {
   patchReviewCards(doc);
   installWorkButtonGlowFix(doc);
   patchTextGuideIcon(doc);
+  installTextGlow(doc);
   installContactCardText(doc);
   rerunLostProcessTimeline(doc);
   installRevealRepair(doc);
